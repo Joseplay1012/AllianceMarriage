@@ -1,0 +1,5 @@
+name: plugin
+version: '${version}'
+
+main: net.joseplay.plugin.Plugin
+api-version: '26.1'

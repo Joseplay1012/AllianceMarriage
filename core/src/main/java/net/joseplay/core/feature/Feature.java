@@ -17,6 +17,8 @@ public interface Feature<T> {
     default void validate(T value) {
     }
 
+    default T add(T current, T amount) {return null;}
+
     default T cast(Object value) {
         return getValueType().cast(value);
     }

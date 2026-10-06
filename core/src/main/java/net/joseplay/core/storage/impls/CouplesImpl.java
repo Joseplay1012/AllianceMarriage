@@ -1,6 +1,7 @@
 package net.joseplay.core.storage.impls;
 
 import net.joseplay.core.Core;
+import net.joseplay.core.contexts.MarryContextResult;
 import net.joseplay.core.couple.Couple;
 import net.joseplay.core.storage.CouplesRepository;
 import org.bukkit.Bukkit;
@@ -9,16 +10,12 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CouplesImpl implements CouplesRepository {
-
-    private final Core core;
     private final Map<UUID, Couple> coupleMap = new ConcurrentHashMap<>();
-
-    public CouplesImpl(Core core) {
-        this.core = core;
-    }
 
     private void addToCache(Couple couple) {
         coupleMap.put(couple.getId(), couple);
@@ -33,66 +30,75 @@ public class CouplesImpl implements CouplesRepository {
     }
 
     @Override
-    public Couple create(UUID partner1, UUID partner2) throws Exception {
-
+    public CompletableFuture<Couple> create(UUID partner1, UUID partner2) {
         UUID[] partners = normalize(partner1, partner2);
 
         partner1 = partners[0];
         partner2 = partners[1];
 
-        Optional<Couple> existing = find(partner1, partner2);
+        UUID finalPartner1 = partner1;
+        UUID finalPartner2 = partner2;
 
-        if (existing.isPresent()) {
-            return existing.get();
-        }
+        return find(finalPartner1, finalPartner2)
+                .thenCompose(existing -> {
+                    if (existing.isPresent()) {
+                        return CompletableFuture.completedFuture(existing.get());
+                    }
 
-        UUID coupleId = UUID.randomUUID();
-        Instant now = Instant.now();
+                    UUID coupleId = UUID.randomUUID();
+                    Instant now = Instant.now();
 
-        String sql = """
-            INSERT INTO couples
-            (id, partner1UUID, partner2UUID, anniversary, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """;
+                    String sql = """
+                            INSERT INTO couples
+                            (id, partner1UUID, partner2UUID, anniversary, created_at)
+                            VALUES (?, ?, ?, ?, ?)
+                            """;
 
-        try {
-            core.getDataBase().executeUpdate(
-                    sql,
-                    coupleId.toString(),
-                    partner1.toString(),
-                    partner2.toString(),
-                    now.toString(),
-                    now.toString()
-            );
-        } catch (Exception exception) {
-            /*
-             * Another server may have created the couple
-             * between find() and INSERT.
-             */
-            return find(partner1, partner2)
-                    .orElseThrow(() -> exception);
-        }
+                    return Core.getInstance().getInstance().getDataBase().executeUpdateAsync(
+                            sql,
+                            coupleId.toString(),
+                            finalPartner1.toString(),
+                            finalPartner2.toString(),
+                            now.toString(),
+                            now.toString()
+                    ).thenCompose(ignored -> {
+                        Couple couple = new Couple(
+                                coupleId,
+                                finalPartner1,
+                                finalPartner2,
+                                now,
+                                now,
+                                Core.getInstance().getFeatureRegistry(),
+                                Core.getInstance().getFeatureRepository()
+                        );
 
-        Couple couple = new Couple(
-                coupleId,
-                partner1,
-                partner2,
-                now,
-                now,
-                core.getFeatureRegistry(),
-                core.getFeatureRepository()
-        );
+                        return couple.features()
+                                .load()
+                                .thenApply(ignoredLoad -> {
+                                    addToCache(couple);
+                                    return couple;
+                                });
+                    }).exceptionallyCompose(exception ->
+                            find(finalPartner1, finalPartner2)
+                                    .thenCompose(found -> {
+                                        if (found.isPresent()) {
+                                            return CompletableFuture.completedFuture(
+                                                    found.get()
+                                            );
+                                        }
 
-        couple.features().load();
+                                        CompletableFuture<Couple> failed =
+                                                new CompletableFuture<>();
 
-        addToCache(couple);
-
-        return couple;
+                                        failed.completeExceptionally(exception);
+                                        return failed;
+                                    })
+                    );
+                });
     }
 
     @Override
-    public Optional<Couple> find(UUID partner1, UUID partner2) {
-
+    public CompletableFuture<Optional<Couple>> find(UUID partner1, UUID partner2) {
         UUID[] partners = normalize(partner1, partner2);
 
         String sql = """
@@ -103,10 +109,9 @@ public class CouplesImpl implements CouplesRepository {
             LIMIT 1
             """;
 
-        Optional<Couple> couple = core.getDataBase().executeQuery(
+        return Core.getInstance().getDataBase().<Optional<Couple>>executeQueryAsync(
                 sql,
                 resultSet -> {
-
                     if (!resultSet.next()) {
                         return Optional.empty();
                     }
@@ -121,39 +126,38 @@ public class CouplesImpl implements CouplesRepository {
                         return Optional.of(cached);
                     }
 
-                    return Optional.of(new Couple(
+                    Couple couple = new Couple(
                             id,
-                            UUID.fromString(
-                                    resultSet.getString("partner1UUID")
-                            ),
-                            UUID.fromString(
-                                    resultSet.getString("partner2UUID")
-                            ),
-                            Instant.parse(
-                                    resultSet.getString("anniversary")
-                            ),
-                            Instant.parse(
-                                    resultSet.getString("created_at")
-                            ),
-                            core.getFeatureRegistry(),
-                            core.getFeatureRepository()
-                    ));
+                            UUID.fromString(resultSet.getString("partner1UUID")),
+                            UUID.fromString(resultSet.getString("partner2UUID")),
+                            Instant.parse(resultSet.getString("anniversary")),
+                            Instant.parse(resultSet.getString("created_at")),
+                            Core.getInstance().getFeatureRegistry(),
+                            Core.getInstance().getFeatureRepository()
+                    );
+
+                    addToCache(couple);
+
+                    return Optional.of(couple);
                 },
                 partners[0].toString(),
                 partners[1].toString()
-        );
+        ).thenCompose(optional -> {
+            if (optional.isEmpty()){
+                return CompletableFuture.completedFuture(Optional.empty());
+            }
 
-        couple.ifPresent(c -> {
-            addToCache(c);
+            Couple couple = optional.get();
 
-            c.features().load();
+            return  couple.features()
+                    .load()
+                    .thenApply(ignore -> Optional.of(couple));
+
         });
-
-        return couple;
     }
 
     @Override
-    public Optional<Couple> findById(UUID id) {
+    public CompletableFuture<Optional<Couple>> findById(UUID id) {
         String sql = """
                 SELECT partner1UUID, partner2UUID, anniversary, created_at
                 FROM couples
@@ -161,7 +165,7 @@ public class CouplesImpl implements CouplesRepository {
                 LIMIT 1
                 """;
 
-        Optional<Couple> op = core.getDataBase().executeQuery(
+        return Core.getInstance().getDataBase().executeQueryAsync(
                 sql,
                 resultSet -> {
                     if (!resultSet.next()) return Optional.empty();
@@ -179,31 +183,23 @@ public class CouplesImpl implements CouplesRepository {
                             partner2,
                             anniversary,
                             createdAt,
-                            core.getFeatureRegistry(),
-                            core.getFeatureRepository()
+                            Core.getInstance().getFeatureRegistry(),
+                            Core.getInstance().getFeatureRepository()
                     ));
                 },
                 id.toString()
         );
-
-        op.ifPresent(c -> {
-            addToCache(c);
-
-            c.features().load();
-        });
-
-        return op;
     }
 
     @Override
-    public Optional<UUID> findPartner(UUID playerUUID) {
+    public CompletableFuture<Optional<UUID>> findPartner(UUID playerUUID) {
         String sql = """
                 SELECT partnerUUID
                 FROM marriages
                 WHERE playerUUID = ?
                 """;
 
-        return core.getDataBase().executeQuery(
+        return Core.getInstance().getDataBase().executeQueryAsync(
                 sql,
                 resultSet -> {
                     if (!resultSet.next()) return Optional.empty();
@@ -215,85 +211,120 @@ public class CouplesImpl implements CouplesRepository {
     }
 
     @Override
-    public Optional<Boolean> maryPlayer(UUID playerUUID, UUID partnerUUID) {
+    public CompletableFuture<MarryContextResult> marryPlayer(
+            UUID playerUUID,
+            UUID partnerUUID
+    ) {
+        return findPartner(playerUUID)
+                .thenCompose(playerMarriage -> {
+                    if (playerMarriage.isPresent()) {
+                        return CompletableFuture.completedFuture(
+                                MarryContextResult.error(
+                                        playerUUID,
+                                        partnerUUID,
+                                        MarryContextResult.MarryErrorType.ALREADY_MARRIED,
+                                        "Player is already married."
+                                )
+                        );
+                    }
 
-        if (findPartner(playerUUID).isPresent()){
-            return Optional.of(Boolean.FALSE);
-        }
+                    return findPartner(partnerUUID).thenCompose(partnerMarriage -> {
+                        if (partnerMarriage.isPresent()) {
+                            return CompletableFuture.completedFuture(
+                                    MarryContextResult.error(
+                                            playerUUID,
+                                            partnerUUID,
+                                            MarryContextResult.MarryErrorType.PARTNER_ALREADY_MARRIED,
+                                            "Partner is already married."
+                                    )
+                            );
+                        }
 
-        if (findPartner(partnerUUID).isPresent()){
-            return Optional.of(Boolean.FALSE);
-        }
-
-        String sql = core.getDataBase().mysql ? """
-                INSERT INTO marriages
-                (playerUUID, partnerUUID)
-                VALUES(?, ?)
-                ON DUPLICATE UPDATE
-                partnerUUID = VALUES(partnerUUID)
-                """ :
-                """
-                INSERT INTO marriages
-                (playerUUID, partnerUUID)
-                VALUES(?, ?)
-                ON CONFLICT(playerUUID)
-                DO UPDATE SET
-                partnerUUID = excluded.partnerUUID
-                """;
-
-        Bukkit.getScheduler().runTaskAsynchronously(core.getPlugin(),() -> {
-            core.getDataBase().executeUpdate(
-                    sql,
-                    playerUUID.toString(),
-                    partnerUUID.toString()
-            );
-
-            core.getDataBase().executeUpdate(
-                    sql,
-                    partnerUUID.toString(),
-                    playerUUID.toString()
-            );
-
-            try {
-                create(playerUUID, partnerUUID);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        return Optional.of(Boolean.TRUE);
+                        return createMarriage(playerUUID, partnerUUID);
+                    });
+                });
     }
 
     @Override
-    public Optional<Boolean> divocePlayer(UUID playerUUID) {
+    public CompletableFuture<MarryContextResult> divorcePlayer(UUID playerUUID) {
+        return findPartner(playerUUID)
+                .thenCompose(partner -> {
+                    if (partner.isEmpty()) {
+                        return CompletableFuture.completedFuture(
+                                MarryContextResult.error(
+                                        playerUUID,
+                                        null,
+                                        MarryContextResult.MarryErrorType.NOT_MARRIED,
+                                        "Player is not married."
+                                )
+                        );
+                    }
 
-        UUID partner = findPartner(playerUUID).orElse(null);
+                    return divorce(playerUUID, partner.get());
+                });
+    }
 
-        if (partner == null){
-            return Optional.of(Boolean.FALSE);
-        }
+    private CompletableFuture<MarryContextResult> createMarriage(
+            UUID playerUUID,
+            UUID partnerUUID
+    ) {
+        String sql = Core.getInstance().getDataBase().mysql ? """
+            INSERT INTO marriages
+            (playerUUID, partnerUUID)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE
+            partnerUUID = VALUES(partnerUUID)
+            """ : """
+            INSERT INTO marriages
+            (playerUUID, partnerUUID)
+            VALUES (?, ?)
+            ON CONFLICT(playerUUID)
+            DO UPDATE SET
+            partnerUUID = excluded.partnerUUID
+            """;
 
+        return Core.getInstance().getDataBase().executeUpdateAsync(
+                sql,
+                playerUUID.toString(),
+                partnerUUID.toString()
+        ).thenCompose(ignored ->
+                Core.getInstance().getDataBase().executeUpdateAsync(
+                        sql,
+                        partnerUUID.toString(),
+                        playerUUID.toString()
+                )
+        ).thenCompose(ignored ->
+                create(playerUUID, partnerUUID)
+        ).thenApply(couple -> MarryContextResult.marry(playerUUID, partnerUUID));
+    }
+
+    private CompletableFuture<MarryContextResult> divorce(
+            UUID playerUUID,
+            UUID partnerUUID
+    ) {
         String sql = """
-                DELETE FROM marriages
-                WHERE playerUUID = ?
-                AND partnerUUID = ?
-                """;
+            DELETE FROM marriages
+            WHERE playerUUID = ?
+            AND partnerUUID = ?
+            """;
 
-        Bukkit.getScheduler().runTaskAsynchronously(core.getPlugin(), () -> {
-            core.getDataBase().executeUpdate(
-                    sql,
-                    playerUUID.toString(),
-                    partner.toString()
-            );
-
-            core.getDataBase().executeUpdate(
-                    sql,
-                    partner.toString(),
-                    playerUUID.toString()
-            );
-        });
-
-        return Optional.of(Boolean.TRUE);
+        return Core.getInstance().getDataBase()
+                .executeUpdateAsync(
+                        sql,
+                        playerUUID.toString(),
+                        partnerUUID.toString()
+                )
+                .thenCompose(ignored ->
+                        Core.getInstance().getDataBase()
+                                .executeUpdateAsync(
+                                        sql,
+                                        partnerUUID.toString(),
+                                        playerUUID.toString()
+                                )
+                )
+                .thenApply(ignored ->
+                        MarryContextResult.divorce(playerUUID, partnerUUID)
+                );
     }
 
     private UUID[] normalize(UUID partner1, UUID partner2) {

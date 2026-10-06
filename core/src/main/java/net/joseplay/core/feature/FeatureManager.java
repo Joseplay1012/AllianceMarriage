@@ -1,11 +1,13 @@
 package net.joseplay.core.feature;
 
+import net.joseplay.core.FeatureRegistry;
 import net.joseplay.core.storage.FeatureRepository;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 public final class FeatureManager {
 
@@ -64,58 +66,47 @@ public final class FeatureManager {
         values.remove(id);
     }
 
-    public <T> String increment(String id, T value){
-
+    public <T> CompletableFuture<T> increment(String id, T value) {
         Feature<T> feature = getFeature(id);
 
         feature.validate(value);
 
-        repository.increment(
+        return repository.increment(
                 coupleId,
                 feature.getId(),
                 feature.getType(),
                 feature.serialize(value)
-        );
+        ).thenApply(result -> {
+            T newValue = feature.deserialize(result);
 
-        Integer oldValue = 0;
+            values.put(id, newValue);
 
-        try {
-            Object obj = values.get(id);
-
-            if (obj instanceof Integer) {
-                oldValue = (Integer) obj;
-            }
-        } catch (Exception e) {
-
-        }
-
-        int newV = (int) value + oldValue;
-
-        values.put(id, newV);
-
-        return String.valueOf(newV);
+            return newValue;
+        });
     }
 
     public boolean has(String id) {
         return values.containsKey(id);
     }
 
-    public void load() {
-        values.clear();
+    public CompletableFuture<Void> load() {
+        return repository.load(coupleId).thenAccept(features -> {
+            values.clear();
 
-        for (StoredFeature stored : repository.load(coupleId)) {
-            Feature<?> feature = registry.get(stored.feature());
+            for (StoredFeature stored : features) {
+                Feature<?> feature = registry.get(stored.feature());
 
-            if (feature == null) {
-                continue;
+                if (feature == null) {
+                    continue;
+                }
+
+                Object value = feature.deserialize(stored.value());
+
+                if (value != null) {
+                    values.put(stored.feature(), value);
+                }
             }
-
-            Object value = feature.deserialize(stored.value());
-
-            if (value != null) {
-                values.put(stored.feature(), value);
-            }
-        }
+        });
     }
 
     public Map<String, Object> values() {

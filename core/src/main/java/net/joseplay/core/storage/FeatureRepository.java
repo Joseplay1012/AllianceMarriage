@@ -3,27 +3,23 @@ package net.joseplay.core.storage;
 import net.joseplay.core.feature.StoredFeature;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public interface FeatureRepository {
 
-    void set(
+    CompletableFuture<Void> set(
             String coupleId,
             String feature,
             String type,
             String value
     );
 
-    void increment(
-            String coupleId,
-            String feature,
-            String type,
-            String value
-    );
+    CompletableFuture<String> increment(String coupleId, String feature, String type, String amount);
 
-    void delete(
+    CompletableFuture<Void> delete(
             String coupleId,
             String feature
     );
 
-    List<StoredFeature> load(String coupleId);
+    CompletableFuture<List<StoredFeature>> load(String coupleId);
 }

@@ -1,6 +1,9 @@
 # User-specific stuff
 .idea/
 
+# Db
+marriage.db
+
 *.iml
 *.ipr
 *.iws

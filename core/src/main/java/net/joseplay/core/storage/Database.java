@@ -8,12 +8,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Database {
     private final PluginSettings settings;
     private final JavaPlugin plugin;
     private HikariDataSource dataSource;
     public boolean mysql;
+    private final ExecutorService databaseExecutor;
 
     @FunctionalInterface
     public interface ResultMapper<T> {
@@ -26,6 +30,8 @@ public class Database {
         this.plugin = plugin;
 
         mysql = settings.mysql();
+
+        databaseExecutor = Executors.newFixedThreadPool(mysql ? 8 : 1);
     }
 
 
@@ -80,7 +86,7 @@ public class Database {
 
 
     private void createSchema(){
-        execute("""
+        executeAsync("""
                 CREATE TABLE IF NOT EXISTS marriages (
                       playerUUID VARCHAR(36) PRIMARY KEY,
                       partnerUUID VARCHAR(36) NOT NULL,
@@ -88,7 +94,7 @@ public class Database {
                   );
                 """);
 
-        execute("""
+        executeAsync("""
                 CREATE TABLE IF NOT EXISTS couples (
                       id VARCHAR(36) PRIMARY KEY,
                       partner1UUID VARCHAR(36) NOT NULL,
@@ -99,7 +105,7 @@ public class Database {
                   );
                 """);
 
-        execute("""
+        executeAsync("""
                 CREATE TABLE IF NOT EXISTS couples_features (
                       couple_id VARCHAR(36) NOT NULL,
                       feature TEXT NOT NULL,
@@ -113,20 +119,22 @@ public class Database {
 
 
     public void execute(String sql) {
-        Connection connection = null;
-        Statement statement = null;
-        try {
-            connection = connection();
-            statement = connection.createStatement();
+        try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+
             statement.execute(sql);
         } catch (SQLException exception) {
             throw new IllegalStateException("Falha ao preparar o banco: " + sql, exception);
-        } finally {
-            closeQuietly(statement, connection);
         }
     }
 
-    public int executeUpdate(String sql, Object... params) {
+    public CompletableFuture<Void> executeAsync(String sql) {
+        return CompletableFuture.runAsync(() -> {
+            execute(sql);
+        });
+    }
+
+    public void executeUpdate(String sql, Object... params) {
         try (Connection connection = connection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
@@ -134,13 +142,19 @@ public class Database {
                 statement.setObject(i + 1, params[i]);
             }
 
-            return statement.executeUpdate();
+            statement.executeUpdate();
         } catch (SQLException exception) {
             throw new IllegalStateException(
                     "Falha ao executar operação no banco: " + sql,
                     exception
             );
         }
+    }
+
+    public CompletableFuture<Void> executeUpdateAsync(String sql, Object... params) {
+        return CompletableFuture.runAsync(() -> {
+            executeUpdate(sql, params);
+        });
     }
 
     public <T> T executeQuery(
@@ -165,6 +179,16 @@ public class Database {
                     exception
             );
         }
+    }
+
+    public <T> CompletableFuture<T> executeQueryAsync(
+            String sql,
+            ResultMapper<T> mapper,
+            Object... parameters
+    ) {
+        return CompletableFuture.supplyAsync(
+                () -> executeQuery(sql, mapper, parameters)
+        );
     }
 
     static void closeQuietly(AutoCloseable... closeables) {

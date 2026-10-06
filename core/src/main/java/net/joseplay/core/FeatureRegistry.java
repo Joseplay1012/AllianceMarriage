@@ -1,4 +1,6 @@
-package net.joseplay.core.feature;
+package net.joseplay.core;
+
+import net.joseplay.core.feature.Feature;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -36,6 +38,10 @@ public final class FeatureRegistry {
 
     public Feature<?> get(String id) {
         return features.get(id);
+    }
+
+    protected void clear(){
+        features.clear();
     }
 
     public Collection<Feature<?>> all() {

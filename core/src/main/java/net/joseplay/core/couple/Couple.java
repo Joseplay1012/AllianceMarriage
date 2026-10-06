@@ -1,7 +1,7 @@
 package net.joseplay.core.couple;
 
 import net.joseplay.core.feature.FeatureManager;
-import net.joseplay.core.feature.FeatureRegistry;
+import net.joseplay.core.FeatureRegistry;
 import net.joseplay.core.storage.FeatureRepository;
 
 import java.time.Instant;

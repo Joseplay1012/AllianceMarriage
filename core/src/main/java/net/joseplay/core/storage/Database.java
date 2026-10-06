@@ -1,11 +1,12 @@
-package net.joseplay.test.core.storage;
+package net.joseplay.core.storage;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import net.joseplay.test.core.config.PluginSettings;
+import net.joseplay.core.config.PluginSettings;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.*;
 
 public class Database {
@@ -45,6 +46,18 @@ public class Database {
         } else {
             File file = new File(plugin.getDataFolder(), "marriage.db");
 
+            if (!file.exists()){
+                if (file.getParentFile().exists()){
+                    file.getParentFile().mkdirs();
+
+                    try {
+                        file.createNewFile();
+                    } catch (IOException e) {
+
+                    }
+                }
+            }
+
             config.setJdbcUrl("jdbc:sqlite:" + file.getAbsolutePath());
             config.setDriverClassName("org.sqlite.JDBC");
             config.setMaximumPoolSize(1);
@@ -70,7 +83,8 @@ public class Database {
         execute("""
                 CREATE TABLE IF NOT EXISTS marriages (
                       playerUUID VARCHAR(36) PRIMARY KEY,
-                      partnerUUID VARCHAR(36) NOT NULL
+                      partnerUUID VARCHAR(36) NOT NULL,
+                      UNIQUE (playerUUID)
                   );
                 """);
 

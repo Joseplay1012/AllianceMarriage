@@ -1,4 +1,4 @@
-package net.joseplay.core.config;
+package net.joseplay.test.config;
 
 public class PluginSettings {
     public boolean debug(){return false;}

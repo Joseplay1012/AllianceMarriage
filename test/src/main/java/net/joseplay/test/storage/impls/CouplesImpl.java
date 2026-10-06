@@ -1,8 +1,8 @@
-package net.joseplay.core.storage.impls;
+package net.joseplay.test.storage.impls;
 
-import net.joseplay.core.Core;
-import net.joseplay.core.couple.Couple;
-import net.joseplay.core.storage.CouplesRepository;
+import net.joseplay.test.Core;
+import net.joseplay.test.couple.Couple;
+import net.joseplay.test.storage.CouplesRepository;
 
 import java.time.Instant;
 import java.util.Map;
@@ -142,7 +142,14 @@ public class CouplesImpl implements CouplesRepository {
 
         couple.ifPresent(this::addToCache);
 
+        couple.ifPresent(c -> c.features().load());
+
         return couple;
+    }
+
+    @Override
+    public Optional<Couple> findById(UUID id) {
+        return Optional.empty();
     }
 
     private UUID[] normalize(UUID partner1, UUID partner2) {

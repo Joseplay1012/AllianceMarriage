@@ -1,6 +1,6 @@
-package net.joseplay.core.storage;
+package net.joseplay.test.storage;
 
-import net.joseplay.core.feature.StoredFeature;
+import net.joseplay.test.feature.StoredFeature;
 
 import java.util.List;
 

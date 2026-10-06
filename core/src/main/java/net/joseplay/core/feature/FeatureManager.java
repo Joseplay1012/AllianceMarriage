@@ -1,6 +1,6 @@
-package net.joseplay.test.core.feature;
+package net.joseplay.core.feature;
 
-import net.joseplay.test.core.storage.FeatureRepository;
+import net.joseplay.core.storage.FeatureRepository;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,6 +62,38 @@ public final class FeatureManager {
 
         repository.delete(coupleId, id);
         values.remove(id);
+    }
+
+    public <T> String increment(String id, T value){
+
+        Feature<T> feature = getFeature(id);
+
+        feature.validate(value);
+
+        repository.increment(
+                coupleId,
+                feature.getId(),
+                feature.getType(),
+                feature.serialize(value)
+        );
+
+        Integer oldValue = 0;
+
+        try {
+            Object obj = values.get(id);
+
+            if (obj instanceof Integer) {
+                oldValue = (Integer) obj;
+            }
+        } catch (Exception e) {
+
+        }
+
+        int newV = (int) value + oldValue;
+
+        values.put(id, newV);
+
+        return String.valueOf(newV);
     }
 
     public boolean has(String id) {

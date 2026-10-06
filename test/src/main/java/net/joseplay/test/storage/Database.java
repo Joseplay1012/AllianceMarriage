@@ -1,16 +1,14 @@
-package net.joseplay.core.storage;
+package net.joseplay.test.storage;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import net.joseplay.core.config.PluginSettings;
-import org.bukkit.plugin.java.JavaPlugin;
+import net.joseplay.test.config.PluginSettings;
 
 import java.io.File;
 import java.sql.*;
 
 public class Database {
     private final PluginSettings settings;
-    private final JavaPlugin plugin;
     private HikariDataSource dataSource;
     public boolean mysql;
 
@@ -20,10 +18,8 @@ public class Database {
         T map(ResultSet resultSet) throws SQLException;
     }
 
-    public Database(PluginSettings pluginSettings, JavaPlugin plugin) {
+    public Database(PluginSettings pluginSettings) {
         this.settings = pluginSettings;
-        this.plugin = plugin;
-
         mysql = settings.mysql();
     }
 
@@ -43,7 +39,7 @@ public class Database {
             config.setDriverClassName("com.mysql.cj.jdbc.Driver");
             config.setMaximumPoolSize(8);
         } else {
-            File file = new File(plugin.getDataFolder(), "marriage.db");
+            File file = new File( "marriage.db");
 
             config.setJdbcUrl("jdbc:sqlite:" + file.getAbsolutePath());
             config.setDriverClassName("org.sqlite.JDBC");

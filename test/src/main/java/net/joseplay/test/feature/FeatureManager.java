@@ -1,6 +1,6 @@
-package net.joseplay.core.feature;
+package net.joseplay.test.feature;
 
-import net.joseplay.core.storage.FeatureRepository;
+import net.joseplay.test.storage.FeatureRepository;
 
 import java.util.Collections;
 import java.util.HashMap;

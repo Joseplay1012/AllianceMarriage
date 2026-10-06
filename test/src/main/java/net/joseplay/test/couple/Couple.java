@@ -1,8 +1,8 @@
-package net.joseplay.core.couple;
+package net.joseplay.test.couple;
 
-import net.joseplay.core.feature.FeatureManager;
-import net.joseplay.core.feature.FeatureRegistry;
-import net.joseplay.core.storage.FeatureRepository;
+import net.joseplay.test.feature.FeatureManager;
+import net.joseplay.test.feature.FeatureRegistry;
+import net.joseplay.test.storage.FeatureRepository;
 
 import java.time.Instant;
 import java.util.UUID;

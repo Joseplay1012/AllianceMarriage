@@ -1,5 +1,10 @@
-name: plugin
+name: AllianceMarriage
 version: '${version}'
 
 main: net.joseplay.plugin.Plugin
-api-version: '26.1'
+
+
+commands:
+  marriage:
+    allianses:
+      - mg

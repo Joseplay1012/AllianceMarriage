@@ -1,10 +1,8 @@
-package net.joseplay.core.feature;
+package net.joseplay.test.feature;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import net.joseplay.test.feature.Feature;
+
+import java.util.*;
 
 public final class FeatureRegistry {
 

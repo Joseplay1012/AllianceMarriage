@@ -1,8 +1,9 @@
-package net.joseplay.test.core.storage.impls;
+package net.joseplay.core.storage.impls;
 
-import net.joseplay.test.core.Core;
-import net.joseplay.test.core.couple.Couple;
-import net.joseplay.test.core.storage.CouplesRepository;
+import net.joseplay.core.Core;
+import net.joseplay.core.couple.Couple;
+import net.joseplay.core.storage.CouplesRepository;
+import org.bukkit.Bukkit;
 
 import java.time.Instant;
 import java.util.Map;
@@ -82,6 +83,8 @@ public class CouplesImpl implements CouplesRepository {
                 core.getFeatureRepository()
         );
 
+        couple.features().load();
+
         addToCache(couple);
 
         return couple;
@@ -140,9 +143,157 @@ public class CouplesImpl implements CouplesRepository {
                 partners[1].toString()
         );
 
-        couple.ifPresent(this::addToCache);
+        couple.ifPresent(c -> {
+            addToCache(c);
+
+            c.features().load();
+        });
 
         return couple;
+    }
+
+    @Override
+    public Optional<Couple> findById(UUID id) {
+        String sql = """
+                SELECT partner1UUID, partner2UUID, anniversary, created_at
+                FROM couples
+                WHERE id = ?
+                LIMIT 1
+                """;
+
+        Optional<Couple> op = core.getDataBase().executeQuery(
+                sql,
+                resultSet -> {
+                    if (!resultSet.next()) return Optional.empty();
+
+
+                    UUID partner1 = UUID.fromString(resultSet.getString("partner1UUID"));
+                    UUID partner2 = UUID.fromString(resultSet.getString("partner2UUID"));
+                    Instant anniversary = Instant.parse(resultSet.getString("anniversary"));
+                    Instant createdAt = Instant.parse(resultSet.getString("created_at"));
+
+
+                    return Optional.of(new Couple(
+                            id,
+                            partner1,
+                            partner2,
+                            anniversary,
+                            createdAt,
+                            core.getFeatureRegistry(),
+                            core.getFeatureRepository()
+                    ));
+                },
+                id.toString()
+        );
+
+        op.ifPresent(c -> {
+            addToCache(c);
+
+            c.features().load();
+        });
+
+        return op;
+    }
+
+    @Override
+    public Optional<UUID> findPartner(UUID playerUUID) {
+        String sql = """
+                SELECT partnerUUID
+                FROM marriages
+                WHERE playerUUID = ?
+                """;
+
+        return core.getDataBase().executeQuery(
+                sql,
+                resultSet -> {
+                    if (!resultSet.next()) return Optional.empty();
+
+                    return Optional.of(UUID.fromString(resultSet.getString("partnerUUID")));
+                },
+                playerUUID.toString()
+        );
+    }
+
+    @Override
+    public Optional<Boolean> maryPlayer(UUID playerUUID, UUID partnerUUID) {
+
+        if (findPartner(playerUUID).isPresent()){
+            return Optional.of(Boolean.FALSE);
+        }
+
+        if (findPartner(partnerUUID).isPresent()){
+            return Optional.of(Boolean.FALSE);
+        }
+
+        String sql = core.getDataBase().mysql ? """
+                INSERT INTO marriages
+                (playerUUID, partnerUUID)
+                VALUES(?, ?)
+                ON DUPLICATE UPDATE
+                partnerUUID = VALUES(partnerUUID)
+                """ :
+                """
+                INSERT INTO marriages
+                (playerUUID, partnerUUID)
+                VALUES(?, ?)
+                ON CONFLICT(playerUUID)
+                DO UPDATE SET
+                partnerUUID = excluded.partnerUUID
+                """;
+
+        Bukkit.getScheduler().runTaskAsynchronously(core.getPlugin(),() -> {
+            core.getDataBase().executeUpdate(
+                    sql,
+                    playerUUID.toString(),
+                    partnerUUID.toString()
+            );
+
+            core.getDataBase().executeUpdate(
+                    sql,
+                    partnerUUID.toString(),
+                    playerUUID.toString()
+            );
+
+            try {
+                create(playerUUID, partnerUUID);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        return Optional.of(Boolean.TRUE);
+    }
+
+    @Override
+    public Optional<Boolean> divocePlayer(UUID playerUUID) {
+
+        UUID partner = findPartner(playerUUID).orElse(null);
+
+        if (partner == null){
+            return Optional.of(Boolean.FALSE);
+        }
+
+        String sql = """
+                DELETE FROM marriages
+                WHERE playerUUID = ?
+                AND partnerUUID = ?
+                """;
+
+        Bukkit.getScheduler().runTaskAsynchronously(core.getPlugin(), () -> {
+            core.getDataBase().executeUpdate(
+                    sql,
+                    playerUUID.toString(),
+                    partner.toString()
+            );
+
+            core.getDataBase().executeUpdate(
+                    sql,
+                    partner.toString(),
+                    playerUUID.toString()
+            );
+        });
+
+        return Optional.of(Boolean.TRUE);
     }
 
     private UUID[] normalize(UUID partner1, UUID partner2) {

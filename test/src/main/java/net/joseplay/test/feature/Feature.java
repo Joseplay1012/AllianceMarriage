@@ -1,4 +1,4 @@
-package net.joseplay.core.feature;
+package net.joseplay.test.feature;
 
 public interface Feature<T> {
 

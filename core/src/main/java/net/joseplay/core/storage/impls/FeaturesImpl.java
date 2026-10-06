@@ -1,8 +1,8 @@
-package net.joseplay.test.core.storage.impls;
+package net.joseplay.core.storage.impls;
 
-import net.joseplay.test.core.feature.StoredFeature;
-import net.joseplay.test.core.storage.Database;
-import net.joseplay.test.core.storage.FeatureRepository;
+import net.joseplay.core.feature.StoredFeature;
+import net.joseplay.core.storage.Database;
+import net.joseplay.core.storage.FeatureRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -12,6 +12,11 @@ import java.util.List;
 public class FeaturesImpl implements FeatureRepository {
     private final Database dataBase;
     private final JavaPlugin plugin;
+    private final List<String> allowNumbers = List.of(
+            "INTEGER",
+            "DOUBLE",
+            "LONG"
+    );
 
     public FeaturesImpl(Database dataBase, JavaPlugin plugin) {
         this.dataBase = dataBase;
@@ -48,6 +53,38 @@ public class FeaturesImpl implements FeatureRepository {
     }
 
     @Override
+    public void increment(String coupleId, String feature, String type, String value) {
+
+        if (!allowNumbers.contains(type.toUpperCase())) return;
+
+        String sql = dataBase.mysql ? """
+                INSERT INTO couples_features
+                                  (couple_id, feature, type, value)
+                                  VALUES (?, ?, ?, ?)
+                                  ON DUPLICATE KEY UPDATE
+                                  type = VALUES(type),
+                                  value = couples_features.value + VALUES(value)
+                """ :
+                """
+                        INSERT INTO couples_features
+                        (couple_id, feature, type, value)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(couple_id, feature)
+                        DO UPDATE SET
+                        type = excluded.type,
+                        value = couples_features.value + excluded.value
+                """;
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin,() -> dataBase.executeUpdate(
+                sql,
+                coupleId,
+                feature,
+                type,
+                value
+        ));
+    }
+
+    @Override
     public void delete(String coupleId, String feature) {
         String sql = """
                 DELETE FROM couples_features
@@ -65,12 +102,12 @@ public class FeaturesImpl implements FeatureRepository {
     @Override
     public List<StoredFeature> load(String coupleId) {
         String sql = """
-                SELECT fuature, type, value
+                SELECT feature, type, value
                 FROM couples_features
                 WHERE couple_id = ?
                 """;
 
-        List<StoredFeature> storedFeatures = dataBase.executeQuery(
+        return dataBase.executeQuery(
                 sql,
                 resultSet -> {
                     List<StoredFeature> sList = new ArrayList<>();
@@ -88,7 +125,5 @@ public class FeaturesImpl implements FeatureRepository {
                 },
                 coupleId
         );
-
-        return storedFeatures;
     }
 }

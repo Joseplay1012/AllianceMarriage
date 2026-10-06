@@ -1,21 +1,17 @@
-package net.joseplay.core.storage.impls;
+package net.joseplay.test.storage.impls;
 
-import net.joseplay.core.feature.StoredFeature;
-import net.joseplay.core.storage.Database;
-import net.joseplay.core.storage.FeatureRepository;
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.java.JavaPlugin;
+import net.joseplay.test.feature.StoredFeature;
+import net.joseplay.test.storage.Database;
+import net.joseplay.test.storage.FeatureRepository;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FeaturesImpl implements FeatureRepository {
     private final Database dataBase;
-    private final JavaPlugin plugin;
 
-    public FeaturesImpl(Database dataBase, JavaPlugin plugin) {
+    public FeaturesImpl(Database dataBase) {
         this.dataBase = dataBase;
-        this.plugin = plugin;
     }
 
     @Override
@@ -38,13 +34,13 @@ public class FeaturesImpl implements FeatureRepository {
                         value = excluded.value
                 """;
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin,() -> dataBase.executeUpdate(
+        dataBase.executeUpdate(
                 sql,
                 coupleId,
                 feature,
                 type,
                 value
-        ));
+        );
     }
 
     @Override
@@ -54,18 +50,17 @@ public class FeaturesImpl implements FeatureRepository {
                 WHERE couple_id = ?
                 AND feature = ?
                 """;
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin,() -> dataBase.executeUpdate(
+        dataBase.executeUpdate(
                 sql,
                 coupleId,
                 feature
-        ));
+        );
     }
 
     @Override
     public List<StoredFeature> load(String coupleId) {
         String sql = """
-                SELECT fuature, type, value
+                SELECT feature, type, value
                 FROM couples_features
                 WHERE couple_id = ?
                 """;

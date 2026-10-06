@@ -1,6 +1,6 @@
-package net.joseplay.core.feature.defaults;
+package net.joseplay.test.feature.defaults;
 
-import net.joseplay.core.feature.Feature;
+import net.joseplay.test.feature.Feature;
 
 public class HeartsFeature implements Feature<Integer> {
     @Override

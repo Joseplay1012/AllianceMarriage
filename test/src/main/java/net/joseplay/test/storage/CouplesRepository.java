@@ -1,6 +1,6 @@
-package net.joseplay.test.core.storage;
+package net.joseplay.core.storage;
 
-import net.joseplay.test.core.couple.Couple;
+import net.joseplay.core.couple.Couple;
 
 import java.util.Optional;
 import java.util.UUID;

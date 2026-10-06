@@ -1,8 +1,8 @@
-package net.joseplay.test.core.storage;
+package net.joseplay.core.storage;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import net.joseplay.test.core.config.PluginSettings;
+import net.joseplay.core.config.PluginSettings;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;

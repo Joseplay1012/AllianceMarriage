@@ -1,8 +1,8 @@
-package net.joseplay.test.core.storage.impls;
+package net.joseplay.core.storage.impls;
 
-import net.joseplay.test.core.Core;
-import net.joseplay.test.core.couple.Couple;
-import net.joseplay.test.core.storage.CouplesRepository;
+import net.joseplay.core.Core;
+import net.joseplay.core.couple.Couple;
+import net.joseplay.core.storage.CouplesRepository;
 
 import java.time.Instant;
 import java.util.Map;

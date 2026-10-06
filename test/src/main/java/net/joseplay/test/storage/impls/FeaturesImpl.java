@@ -1,8 +1,8 @@
-package net.joseplay.test.core.storage.impls;
+package net.joseplay.core.storage.impls;
 
-import net.joseplay.test.core.feature.StoredFeature;
-import net.joseplay.test.core.storage.Database;
-import net.joseplay.test.core.storage.FeatureRepository;
+import net.joseplay.core.feature.StoredFeature;
+import net.joseplay.core.storage.Database;
+import net.joseplay.core.storage.FeatureRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 

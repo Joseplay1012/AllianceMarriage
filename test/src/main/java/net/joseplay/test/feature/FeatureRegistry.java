@@ -1,4 +1,4 @@
-package net.joseplay.test.core.feature;
+package net.joseplay.core.feature;
 
 import java.util.Collection;
 import java.util.Collections;

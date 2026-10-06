@@ -1,4 +1,4 @@
-package net.joseplay.plugin;
+package net.joseplay.test.plugin;
 
 import net.joseplay.core.Core;
 import org.bukkit.plugin.java.JavaPlugin;

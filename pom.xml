@@ -12,6 +12,7 @@
     <name>AllianceMarriage</name>
 
     <modules>
+        <module>api</module>
         <module>core</module>
         <module>plugin</module>
         <module>test</module>
@@ -41,6 +42,11 @@
         <dependencies>
             <dependency>
                 <groupId>net.joseplay</groupId>
+                <artifactId>AllianceMarriage-api</artifactId>
+                <version>1.0</version>
+            </dependency>
+            <dependency>
+                <groupId>net.joseplay</groupId>
                 <artifactId>AllianceMarriage-core</artifactId>
                 <version>1.0</version>
             </dependency>
@@ -59,6 +65,12 @@
                 <groupId>com.github.MilkBowl</groupId>
                 <artifactId>VaultAPI</artifactId>
                 <version>1.7</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.bukkit</groupId>
+                        <artifactId>bukkit</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>me.clip</groupId>

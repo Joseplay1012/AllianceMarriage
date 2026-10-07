@@ -2,9 +2,11 @@ name: AllianceMarriage
 version: '${version}'
 
 main: net.joseplay.plugin.Plugin
-
+api-version: '1.20'
 
 commands:
   marriage:
-    allianses:
+    description: Main command for AllianceMarriage
+    aliases:
       - mg
+      - marry

@@ -68,11 +68,21 @@
   <dependencies>
     <dependency>
       <groupId>net.joseplay</groupId>
+      <artifactId>AllianceMarriage-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>net.joseplay</groupId>
       <artifactId>AllianceMarriage-core</artifactId>
     </dependency>
     <dependency>
       <groupId>org.spigotmc</groupId>
       <artifactId>spigot-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.2</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

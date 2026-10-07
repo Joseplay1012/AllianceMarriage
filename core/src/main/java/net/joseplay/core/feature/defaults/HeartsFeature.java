@@ -35,9 +35,9 @@ public class HeartsFeature implements Feature<Integer> {
 
     @Override
     public void validate(Integer value) {
-        if (value < 0) {
+        if (value == null) {
             throw new IllegalArgumentException(
-                    "Hearts cannot be negative"
+                    "Hearts cannot be null"
             );
         }
     }

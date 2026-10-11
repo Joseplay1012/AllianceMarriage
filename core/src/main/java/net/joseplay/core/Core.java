@@ -2,6 +2,7 @@ package net.joseplay.core;
 
 import net.joseplay.core.config.PluginSettings;
 import net.joseplay.core.feature.defaults.HeartsFeature;
+import net.joseplay.core.feature.defaults.PvPFeature;
 import net.joseplay.core.storage.CouplesRepository;
 import net.joseplay.core.storage.Database;
 import net.joseplay.core.storage.FeatureRepository;
@@ -42,6 +43,7 @@ public final class Core {
         plugin.getLogger().info("Enabling Core features...");
 
         featureRegistry.register(new HeartsFeature());
+        featureRegistry.register(new PvPFeature());
 
         plugin.getLogger().info("Core enabled successfully.");
     }

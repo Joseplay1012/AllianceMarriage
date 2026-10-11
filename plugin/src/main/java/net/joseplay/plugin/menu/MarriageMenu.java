@@ -68,7 +68,9 @@ public class MarriageMenu extends Menu {
         Instant anniversary = couple.getAnniversary() != null ? couple.getAnniversary() : couple.getCreatedAt();
         String formattedDate = DATE_FORMATTER.format(anniversary);
 
-        Duration duration = Duration.between(anniversary, Instant.now());
+        Instant now = Instant.now();
+
+        Duration duration = Duration.between(anniversary, now);
         long days = Math.max(0, duration.toDays());
         long hours = Math.max(0, duration.toHoursPart());
         long minutes = Math.max(0, duration.toMinutesPart());
@@ -83,7 +85,7 @@ public class MarriageMenu extends Menu {
                 .name("&d&l" + partnerName)
                 .lore(
                         "&7Married since: &e" + formattedDate,
-                        "&7Marriage duration: &e" + durationStr,
+                        "&7Marriage duration: &e" + (anniversary.isBefore(now) ? durationStr : "&c Did you get married in the future?"),
                         "&7Status: &aHappily Married"
                 )
                 .build();
@@ -119,7 +121,7 @@ public class MarriageMenu extends Menu {
                         "&7Partner: &f" + partnerName,
                         "&7Online: " + (isPartnerOnline ? "&aOnline" : "&7Offline"),
                         "&7Anniversary: &e" + formattedDate,
-                        "&7Duration: &e" + durationStr
+                        "&7Duration: &e" + (anniversary.isBefore(now) ? durationStr : "&c Did you get married in the future?")
                 )
                 .build();
         setItem(24, statusButton);

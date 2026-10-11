@@ -1,28 +1,43 @@
 package net.joseplay.plugin;
 
+import net.joseplay.api.menu.MenuItem;
 import net.joseplay.api.menu.MenuManager;
+import net.joseplay.api.preferences.Preference;
+import net.joseplay.api.preferences.PreferencesManager;
 import net.joseplay.core.Core;
+import net.joseplay.core.couple.Couple;
+import net.joseplay.core.storage.impls.CouplesImpl;
 import net.joseplay.plugin.commands.MarriageCommands;
 import net.joseplay.plugin.listeners.MarriageListeners;
 import net.joseplay.plugin.menu.MarriageMenuManager;
+import net.joseplay.plugin.preferences.PVPPrefenrence;
+import net.joseplay.plugin.preferences.PointsPreference;
 import net.joseplay.plugin.service.MarriageService;
 import net.joseplay.plugin.shop.HeartShopLayout;
 import net.joseplay.plugin.shop.HeartsShop;
 import net.joseplay.plugin.shop.HeartsShopLoader;
 import net.joseplay.plugin.shop.HeartsShopService;
+import net.joseplay.plugin.util.ItemBuilder;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.UUID;
+
 public final class Plugin extends JavaPlugin {
+    private static Plugin instance;
     private Core core;
     private MarriageService marriageService;
     private HeartsShop heartsShop;
     private HeartsShopService heartsShopService;
     private MarriageMenuManager marriageMenuManager;
+    private PreferencesManager preferencesManager;
 
     @Override
     public void onEnable() {
         getLogger().info("Starting plugin...");
+        instance = this;
 
         core = new Core(this);
         core.onEnable();
@@ -44,6 +59,8 @@ public final class Plugin extends JavaPlugin {
                 heartsShop,
                 heartsShopService
         );
+        preferencesManager = new PreferencesManager();
+        registerPreferences();
 
         getLogger().info("Registering commands...");
         if (getCommand("marriage") == null) {
@@ -83,6 +100,13 @@ public final class Plugin extends JavaPlugin {
         getLogger().info("Plugin disabled successfully.");
     }
 
+    private void registerPreferences(){
+
+        preferencesManager.register(new PVPPrefenrence());
+        preferencesManager.register(new PointsPreference());
+
+    }
+
     public Core getCore() {
         return core;
     }
@@ -101,5 +125,13 @@ public final class Plugin extends JavaPlugin {
 
     public MarriageMenuManager getMarriageMenuManager() {
         return marriageMenuManager;
+    }
+
+    public PreferencesManager getPreferencesManager() {
+        return preferencesManager;
+    }
+
+    public static Plugin getInstance() {
+        return instance;
     }
 }

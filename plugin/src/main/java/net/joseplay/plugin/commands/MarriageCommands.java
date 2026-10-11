@@ -1,6 +1,7 @@
 package net.joseplay.plugin.commands;
 
 import net.joseplay.core.couple.Couple;
+import net.joseplay.plugin.menu.CoupleSettings;
 import net.joseplay.plugin.menu.MarriageMenuManager;
 import net.joseplay.plugin.service.MarriageService;
 import net.joseplay.plugin.shop.HeartsShop;
@@ -123,9 +124,11 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
                     }
 
                     Couple couple = coupleOpt.get();
-                    couple.features().increment("hearts", 10).thenAccept(hearts -> {
-                        player.sendMessage(ChatColor.LIGHT_PURPLE + "Your couple currently has "
-                                + ChatColor.YELLOW + (hearts != null ? hearts : 0) + " Hearts.");
+
+                    Bukkit.getScheduler().runTask(menuManager.getPlugin(), () -> {
+                        CoupleSettings coupleSettings = new CoupleSettings(player, couple, menuManager);
+
+                        menuManager.getMenuManager().open(player, coupleSettings);
                     });
                 })
                 .exceptionally(throwable -> {

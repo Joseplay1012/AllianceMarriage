@@ -131,7 +131,7 @@ public class Database {
     public CompletableFuture<Void> executeAsync(String sql) {
         return CompletableFuture.runAsync(() -> {
             execute(sql);
-        });
+        }, databaseExecutor);
     }
 
     public void executeUpdate(String sql, Object... params) {
@@ -154,7 +154,7 @@ public class Database {
     public CompletableFuture<Void> executeUpdateAsync(String sql, Object... params) {
         return CompletableFuture.runAsync(() -> {
             executeUpdate(sql, params);
-        });
+        }, databaseExecutor);
     }
 
     public <T> T executeQuery(
@@ -187,7 +187,8 @@ public class Database {
             Object... parameters
     ) {
         return CompletableFuture.supplyAsync(
-                () -> executeQuery(sql, mapper, parameters)
+                () -> executeQuery(sql, mapper, parameters),
+                databaseExecutor
         );
     }
 

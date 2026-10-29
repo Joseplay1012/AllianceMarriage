@@ -29,7 +29,7 @@ public class FeaturesImpl implements FeatureRepository {
 
     @Override
     public CompletableFuture<Void> set(String coupleId, String feature, String type, String value) {
-        String sql = dataBase.mysql ? """
+        String sql = dataBase.mysql() ? """
                 INSERT INTO couples_features
                         (couple_id, feature, type, value)
                         VALUES (?, ?, ?, ?)
@@ -66,8 +66,8 @@ public class FeaturesImpl implements FeatureRepository {
         String normalizedType = type.toUpperCase(Locale.ROOT);
 
         String sqlType = switch (normalizedType) {
-            case "INTEGER", "LONG" -> dataBase.mysql ? "SIGNED" : "INTEGER";
-            case "DOUBLE" -> dataBase.mysql ? "DOUBLE" : "REAL";
+            case "INTEGER", "LONG" -> dataBase.mysql() ? "SIGNED" : "INTEGER";
+            case "DOUBLE" -> dataBase.mysql() ? "DOUBLE" : "REAL";
             default -> throw new IllegalArgumentException(
                     "Unsupported numeric feature type: " + type
             );
@@ -81,7 +81,7 @@ public class FeaturesImpl implements FeatureRepository {
 
         validateNumber(normalizedType, amount);
 
-        String sql = dataBase.mysql ? """
+        String sql = dataBase.mysql() ? """
                 INSERT INTO couples_features
                 (couple_id, feature, type, value)
                 VALUES (?, ?, ?, ?)

@@ -1,17 +1,13 @@
 package net.joseplay.plugin.shop;
 
+import net.joseplay.core.config.PluginConfig;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.plugin.Plugin;
 
-import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -22,28 +18,16 @@ import java.util.logging.Logger;
 
 public class HeartsShopLoader {
     private final Plugin plugin;
-    private final File configFile;
+    private final PluginConfig config;
 
-    public HeartsShopLoader(Plugin plugin) {
+    public HeartsShopLoader(Plugin plugin, PluginConfig config) {
         this.plugin = plugin;
-        this.configFile = new File(plugin.getDataFolder(), "hearts-shop.yml");
+        this.config = config;
     }
 
     public Map<String, HeartsShopItem> load() {
         Logger logger = plugin.getLogger();
         Map<String, HeartsShopItem> loadedItems = new LinkedHashMap<>();
-
-        if (!configFile.exists()) {
-            plugin.getDataFolder().mkdirs();
-            try {
-                plugin.saveResource("hearts-shop.yml", false);
-                logger.info("Created default hearts-shop.yml configuration.");
-            } catch (IllegalArgumentException e) {
-                logger.warning("Default hearts-shop.yml not found in jar resources. Generating empty file.");
-            }
-        }
-
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
 
         ConfigurationSection itemsSection = config.getConfigurationSection("items");
         if (itemsSection == null) {

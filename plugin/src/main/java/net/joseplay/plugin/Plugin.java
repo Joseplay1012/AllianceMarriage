@@ -1,33 +1,32 @@
 package net.joseplay.plugin;
 
-import net.joseplay.api.menu.MenuItem;
 import net.joseplay.api.menu.MenuManager;
-import net.joseplay.api.preferences.Preference;
 import net.joseplay.api.preferences.PreferencesManager;
 import net.joseplay.core.Core;
-import net.joseplay.core.couple.Couple;
-import net.joseplay.core.storage.impls.CouplesImpl;
+import net.joseplay.core.config.ConfigManager;
+import net.joseplay.core.config.PluginSettings;
 import net.joseplay.plugin.commands.MarriageCommands;
+import net.joseplay.plugin.config.MenuConfig;
+import net.joseplay.plugin.config.Messages;
 import net.joseplay.plugin.listeners.MarriageListeners;
 import net.joseplay.plugin.menu.MarriageMenuManager;
 import net.joseplay.plugin.preferences.PVPPrefenrence;
 import net.joseplay.plugin.preferences.PointsPreference;
 import net.joseplay.plugin.service.MarriageService;
-import net.joseplay.plugin.shop.HeartShopLayout;
+import net.joseplay.plugin.shop.ConfiguredHeartShopLayout;
 import net.joseplay.plugin.shop.HeartsShop;
 import net.joseplay.plugin.shop.HeartsShopLoader;
 import net.joseplay.plugin.shop.HeartsShopService;
-import net.joseplay.plugin.util.ItemBuilder;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.UUID;
 
 public final class Plugin extends JavaPlugin {
     private static Plugin instance;
     private Core core;
+    private ConfigManager configManager;
+    private PluginSettings pluginSettings;
+    private Messages messages;
+    private MenuConfig menuConfig;
     private MarriageService marriageService;
     private HeartsShop heartsShop;
     private HeartsShopService heartsShopService;
@@ -39,16 +38,27 @@ public final class Plugin extends JavaPlugin {
         getLogger().info("Starting plugin...");
         instance = this;
 
-        core = new Core(this);
+        getLogger().info("Loading configurations...");
+        configManager = new ConfigManager(this);
+        configManager.register("config");
+        configManager.register("messages");
+        configManager.register("menus");
+        configManager.register("hearts-shop");
+
+        pluginSettings = new PluginSettings(configManager.require("config"));
+        messages = new Messages(configManager.require("messages"));
+        menuConfig = new MenuConfig(configManager.require("menus"), getLogger());
+
+        core = new Core(this, pluginSettings);
         core.onEnable();
 
         getLogger().info("Initializing services...");
-        marriageService = new MarriageService(this);
+        marriageService = new MarriageService(this, messages);
 
         getLogger().info("Loading Hearts shop...");
-        HeartsShopLoader loader = new HeartsShopLoader(this);
-        heartsShop = new HeartsShop(loader, new HeartShopLayout());
-        heartsShopService = new HeartsShopService(this, marriageService);
+        HeartsShopLoader loader = new HeartsShopLoader(this, configManager.require("hearts-shop"));
+        heartsShop = new HeartsShop(loader, new ConfiguredHeartShopLayout(menuConfig));
+        heartsShopService = new HeartsShopService(this, marriageService, messages);
 
         getLogger().info("Initializing menu system...");
         MenuManager menuManager = new MenuManager();
@@ -57,7 +67,9 @@ public final class Plugin extends JavaPlugin {
                 menuManager,
                 marriageService,
                 heartsShop,
-                heartsShopService
+                heartsShopService,
+                menuConfig,
+                messages
         );
         preferencesManager = new PreferencesManager();
         registerPreferences();
@@ -69,16 +81,17 @@ public final class Plugin extends JavaPlugin {
         }
 
         MarriageCommands marriageCommands = new MarriageCommands(
+                this,
                 marriageMenuManager,
                 marriageService,
-                heartsShop
+                messages
         );
         getCommand("marriage").setExecutor(marriageCommands);
         getCommand("marriage").setTabCompleter(marriageCommands);
         getLogger().info("Registered command: /marriage");
 
         getLogger().info("Registering listeners...");
-        Bukkit.getPluginManager().registerEvents(new MarriageListeners(), this);
+        Bukkit.getPluginManager().registerEvents(new MarriageListeners(messages), this);
 
         getLogger().info("Plugin enabled successfully.");
     }
@@ -87,28 +100,61 @@ public final class Plugin extends JavaPlugin {
     public void onDisable() {
         getLogger().info("Disabling plugin...");
 
-        if (core != null) {
-            core.onDisable();
-        }
-
-
         if (marriageMenuManager != null && marriageMenuManager.getMenuManager() != null) {
             marriageMenuManager.getMenuManager().shutdown();
         }
 
+        if (configManager != null) {
+            configManager.shutdown();
+        }
+
+        if (core != null) {
+            core.onDisable();
+        }
 
         getLogger().info("Plugin disabled successfully.");
     }
 
-    private void registerPreferences(){
+    /**
+     * Reloads YAML files and rebuilds components that cache parsed values.
+     * Open menus are closed so they are not left pointing at old item definitions.
+     * Database connections are not restarted; change {@code config.yml} database
+     * settings requires a full plugin restart.
+     */
+    public boolean reloadPluginConfiguration() {
+        boolean success = configManager.reloadAll(false);
+        if (heartsShop != null) {
+            heartsShop.load();
+        }
+        if (marriageMenuManager != null && marriageMenuManager.getMenuManager() != null) {
+            marriageMenuManager.getMenuManager().closeAll();
+        }
+        return success;
+    }
 
+    private void registerPreferences() {
         preferencesManager.register(new PVPPrefenrence());
         preferencesManager.register(new PointsPreference());
-
     }
 
     public Core getCore() {
         return core;
+    }
+
+    public ConfigManager getConfigManager() {
+        return configManager;
+    }
+
+    public PluginSettings getPluginSettings() {
+        return pluginSettings;
+    }
+
+    public Messages getMessages() {
+        return messages;
+    }
+
+    public MenuConfig getMenuConfig() {
+        return menuConfig;
     }
 
     public MarriageService getMarriageService() {

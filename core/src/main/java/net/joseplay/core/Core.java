@@ -17,16 +17,21 @@ public final class Core {
     private final CouplesRepository couplesRepository;
     private final FeatureRepository featureRepository;
     private final Database dataBase;
-    private final PluginSettings pluginSettings = new PluginSettings();
+    private final PluginSettings pluginSettings;
     private final JavaPlugin plugin;
 
     public Core(JavaPlugin plugin) {
+        this(plugin, new PluginSettings(null));
+    }
+
+    public Core(JavaPlugin plugin, PluginSettings pluginSettings) {
         instance = this;
         this.plugin = plugin;
+        this.pluginSettings = pluginSettings != null ? pluginSettings : new PluginSettings(null);
 
         plugin.getLogger().info("Initializing Core...");
 
-        this.dataBase = new Database(pluginSettings, plugin);
+        this.dataBase = new Database(this.pluginSettings, plugin);
 
         plugin.getLogger().info("Starting database connection...");
         dataBase.start();

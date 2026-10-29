@@ -287,7 +287,7 @@ public class CouplesImpl implements CouplesRepository {
             UUID playerUUID,
             UUID partnerUUID
     ) {
-        String sql = Core.getInstance().getDataBase().mysql ? """
+        String sql = Core.getInstance().getDataBase().mysql() ? """
             INSERT INTO marriages
             (playerUUID, partnerUUID)
             VALUES (?, ?)

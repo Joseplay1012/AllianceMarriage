@@ -1,10 +1,9 @@
 package net.joseplay.plugin.menu;
 
 import net.joseplay.api.menu.Menu;
+import net.joseplay.plugin.config.MenuConfig;
 import net.joseplay.plugin.service.MarriageService;
-import net.joseplay.plugin.util.ItemBuilder;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -15,16 +14,19 @@ public class MarriageRequestMenu extends Menu {
     private final Player player;
     private final UUID requesterUuid;
     private final MarriageService marriageService;
+    private final MenuConfig menuConfig;
 
     public MarriageRequestMenu(
             Player player,
             UUID requesterUuid,
-            MarriageService marriageService
+            MarriageService marriageService,
+            MenuConfig menuConfig
     ) {
-        super("&d&lMarriage Proposal", 3);
+        super(menuConfig.title("request", "&d&lMarriage Proposal"), menuConfig.rows("request", 3));
         this.player = player;
         this.requesterUuid = requesterUuid;
         this.marriageService = marriageService;
+        this.menuConfig = menuConfig;
 
         render();
     }
@@ -32,54 +34,40 @@ public class MarriageRequestMenu extends Menu {
     public void render() {
         clear();
 
-        ItemStack filler = ItemBuilder.of(Material.GRAY_STAINED_GLASS_PANE)
-                .name(" ")
-                .build();
+        ItemStack filler = menuConfig.filler("request");
         fill(filler);
 
         OfflinePlayer requester = Bukkit.getOfflinePlayer(requesterUuid);
         String requesterName = requester.getName() != null ? requester.getName() : "Unknown";
+        String[] placeholders = {"%player%", requesterName};
 
-        // Slot 13: Requester's head
-        ItemStack head = ItemBuilder.of(Material.PLAYER_HEAD)
-                .skullOwner(requester)
-                .name("&d&l" + requesterName)
-                .lore(
-                        "&7Has proposed marriage to you!",
-                        "",
-                        "&eWill you marry this player?"
-                )
-                .build();
-        setItem(13, head);
+        if (menuConfig.isAllowed(player, "request", "head")) {
+            setItem(
+                    menuConfig.slot("request", "head", 13),
+                    menuConfig.item("request", "head", requester, placeholders)
+            );
+        }
 
-        // Slot 11: Accept button
-        ItemStack acceptItem = ItemBuilder.of(Material.LIME_CONCRETE)
-                .name("&a&lACCEPT")
-                .lore(
-                        "&7Click to accept the proposal and marry",
-                        "&f" + requesterName + "&7!",
-                        "",
-                        "&aClick to accept"
-                )
-                .build();
-        setItem(11, acceptItem, context -> {
-            context.close();
-            marriageService.acceptRequest(player, requesterUuid);
-        });
+        if (menuConfig.isAllowed(player, "request", "accept")) {
+            setItem(
+                    menuConfig.slot("request", "accept", 11),
+                    menuConfig.item("request", "accept", placeholders),
+                    context -> {
+                        context.close();
+                        marriageService.acceptRequest(player, requesterUuid);
+                    }
+            );
+        }
 
-        // Slot 15: Deny button
-        ItemStack denyItem = ItemBuilder.of(Material.RED_CONCRETE)
-                .name("&c&lDENY")
-                .lore(
-                        "&7Click to decline the proposal from",
-                        "&f" + requesterName + "&7.",
-                        "",
-                        "&cClick to decline"
-                )
-                .build();
-        setItem(15, denyItem, context -> {
-            context.close();
-            marriageService.denyRequest(player, requesterUuid);
-        });
+        if (menuConfig.isAllowed(player, "request", "deny")) {
+            setItem(
+                    menuConfig.slot("request", "deny", 15),
+                    menuConfig.item("request", "deny", placeholders),
+                    context -> {
+                        context.close();
+                        marriageService.denyRequest(player, requesterUuid);
+                    }
+            );
+        }
     }
 }

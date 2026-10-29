@@ -3,10 +3,10 @@ package net.joseplay.plugin.menu;
 import net.joseplay.api.menu.Menu;
 import net.joseplay.api.menu.MenuContext;
 import net.joseplay.core.couple.Couple;
+import net.joseplay.plugin.config.MenuConfig;
+import net.joseplay.plugin.config.Messages;
 import net.joseplay.plugin.service.MarriageService;
-import net.joseplay.plugin.util.ItemBuilder;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -25,6 +25,8 @@ public class MarriageMenu extends Menu {
     private final Couple couple;
     private final MarriageService marriageService;
     private final MarriageMenuManager menuManager;
+    private final MenuConfig menuConfig;
+    private final Messages messages;
 
     public MarriageMenu(
             Player player,
@@ -32,11 +34,14 @@ public class MarriageMenu extends Menu {
             MarriageService marriageService,
             MarriageMenuManager menuManager
     ) {
-        super("&d&lMarriage Menu", 4);
+        super(menuManager.getMenuConfig().title("marriage", "&d&lMarriage Menu"),
+                menuManager.getMenuConfig().rows("marriage", 4));
         this.player = player;
         this.couple = couple;
         this.marriageService = marriageService;
         this.menuManager = menuManager;
+        this.menuConfig = menuManager.getMenuConfig();
+        this.messages = menuManager.getMessages();
 
         render();
     }
@@ -44,10 +49,7 @@ public class MarriageMenu extends Menu {
     public void render() {
         clear();
 
-        ItemStack background = ItemBuilder.of(Material.GRAY_STAINED_GLASS_PANE)
-                .name(" ")
-                .hideToolTip(true)
-                .build();
+        ItemStack background = menuConfig.filler("marriage");
         fill(background);
 
         if (couple != null) {
@@ -63,105 +65,106 @@ public class MarriageMenu extends Menu {
                 : couple.getPartner1();
 
         OfflinePlayer partner = Bukkit.getOfflinePlayer(partnerUuid);
-        String partnerName = partner.getName() != null ? partner.getName() : "Partner";
+        String partnerFallback = messages.raw("marriage.partner-fallback");
+        if (partnerFallback == null || partnerFallback.isBlank()) {
+            partnerFallback = "Partner";
+        }
+        String partnerName = partner.getName() != null ? partner.getName() : partnerFallback;
 
         Instant anniversary = couple.getAnniversary() != null ? couple.getAnniversary() : couple.getCreatedAt();
         String formattedDate = DATE_FORMATTER.format(anniversary);
 
         Instant now = Instant.now();
-
         Duration duration = Duration.between(anniversary, now);
         long days = Math.max(0, duration.toDays());
         long hours = Math.max(0, duration.toHoursPart());
         long minutes = Math.max(0, duration.toMinutesPart());
-        String durationStr = days + " days, " + hours + " hours, " + minutes + " minutes";
+        String durationStr = anniversary.isBefore(now)
+                ? messages.get("marriage.duration",
+                "%days%", String.valueOf(days),
+                "%hours%", String.valueOf(hours),
+                "%minutes%", String.valueOf(minutes))
+                : messages.get("marriage.duration-future");
 
         Integer heartsObj = couple.features().get("hearts");
         int hearts = heartsObj != null ? heartsObj : 0;
-
-        // Slot 13: Partner Head
-        ItemStack partnerHead = ItemBuilder.of(Material.PLAYER_HEAD)
-                .skullOwner(partner)
-                .name("&d&l" + partnerName)
-                .lore(
-                        "&7Married since: &e" + formattedDate,
-                        "&7Marriage duration: &e" + (anniversary.isBefore(now) ? durationStr : "&c Did you get married in the future?"),
-                        "&7Status: &aHappily Married"
-                )
-                .build();
-        setItem(13, partnerHead);
-
-        // Slot 20: Hearts Shop button
-        ItemStack shopButton = ItemBuilder.of(Material.CHEST)
-                .name("&c&l♥ Hearts Shop")
-                .lore(
-                        "&7Browse and purchase exclusive rewards",
-                        "&7using your shared Hearts!",
-                        "",
-                        "&aClick to open shop!"
-                )
-                .build();
-        setItem(20, shopButton, context -> menuManager.openHeartsShopMenu(player));
-
-        // Slot 22: Hearts balance indicator
-        ItemStack heartsIndicator = ItemBuilder.of(Material.NETHER_STAR)
-                .name("&c&l♥ " + hearts + " Hearts")
-                .lore(
-                        "&7Your couple's current Hearts balance.",
-                        "&7Complete activities together to earn more!"
-                )
-                .build();
-        setItem(22, heartsIndicator);
-
-        // Slot 24: Status / Info button
         boolean isPartnerOnline = partner.isOnline();
-        ItemStack statusButton = ItemBuilder.of(Material.BOOK)
-                .name("&e&lMarriage Status")
-                .lore(
-                        "&7Partner: &f" + partnerName,
-                        "&7Online: " + (isPartnerOnline ? "&aOnline" : "&7Offline"),
-                        "&7Anniversary: &e" + formattedDate,
-                        "&7Duration: &e" + (anniversary.isBefore(now) ? durationStr : "&c Did you get married in the future?")
-                )
-                .build();
-        setItem(24, statusButton);
+        String onlineText = isPartnerOnline
+                ? messages.get("marriage.partner-online")
+                : messages.get("marriage.partner-offline");
 
-        // Slot 31: Divorce button
-        ItemStack divorceButton = ItemBuilder.of(Material.SHEARS)
-                .name("&c&lDivorce")
-                .lore(
-                        "&7Click to end your marriage with &f" + partnerName + "&7.",
-                        "&cWarning: This action is permanent!"
-                )
-                .build();
-        setItem(31, divorceButton, context -> {
-            context.close();
-            marriageService.divorce(player);
-        });
+        String[] placeholders = {
+                "%partner%", partnerName,
+                "%date%", formattedDate,
+                "%duration%", durationStr,
+                "%hearts%", String.valueOf(hearts),
+                "%online%", onlineText
+        };
 
-        // Slot 35: Close button
-        ItemStack closeButton = ItemBuilder.of(Material.ARROW)
-                .name("&7Close")
-                .lore("&7Close this menu.")
-                .build();
-        setItem(35, closeButton, MenuContext::close);
+        if (menuConfig.isAllowed(player, "marriage", "partner-head")) {
+            setItem(
+                    menuConfig.slot("marriage", "partner-head", 13),
+                    menuConfig.item("marriage", "partner-head", partner, placeholders)
+            );
+        }
+
+        if (menuConfig.isAllowed(player, "marriage", "shop")) {
+            setItem(
+                    menuConfig.slot("marriage", "shop", 20),
+                    menuConfig.item("marriage", "shop", placeholders),
+                    context -> menuManager.openHeartsShopMenu(player)
+            );
+        }
+
+        if (menuConfig.isAllowed(player, "marriage", "hearts")) {
+            setItem(
+                    menuConfig.slot("marriage", "hearts", 22),
+                    menuConfig.item("marriage", "hearts", placeholders)
+            );
+        }
+
+        if (menuConfig.isAllowed(player, "marriage", "status")) {
+            setItem(
+                    menuConfig.slot("marriage", "status", 24),
+                    menuConfig.item("marriage", "status", placeholders)
+            );
+        }
+
+        if (menuConfig.isAllowed(player, "marriage", "divorce")) {
+            setItem(
+                    menuConfig.slot("marriage", "divorce", 31),
+                    menuConfig.item("marriage", "divorce", placeholders),
+                    context -> {
+                        context.close();
+                        marriageService.divorce(player);
+                    }
+            );
+        }
+
+        if (menuConfig.isAllowed(player, "marriage", "close")) {
+            setItem(
+                    menuConfig.slot("marriage", "close", 35),
+                    menuConfig.item("marriage", "close", placeholders),
+                    MenuContext::close
+            );
+        }
     }
 
     private void renderUnmarriedLayout() {
-        ItemStack notMarriedItem = ItemBuilder.of(Material.BARRIER)
-                .name("&cNot Married")
-                .lore(
-                        "&7You are not currently married.",
-                        "",
-                        "&eUse /marry <player> to propose to someone!"
-                )
-                .build();
-        setItem(13, notMarriedItem);
+        if (menuConfig.isAllowed(player, "marriage", "not-married")) {
+            setItem(
+                    menuConfig.slot("marriage", "not-married", 13),
+                    menuConfig.item("marriage", "not-married")
+            );
+        }
 
-        ItemStack closeButton = ItemBuilder.of(Material.ARROW)
-                .name("&7Close")
-                .build();
-        setItem(22, closeButton, context -> context.close());
+        if (menuConfig.isAllowed(player, "marriage", "unmarried-close")) {
+            setItem(
+                    menuConfig.slot("marriage", "unmarried-close", 22),
+                    menuConfig.item("marriage", "unmarried-close"),
+                    MenuContext::close
+            );
+        }
     }
 
     @Override

@@ -1,12 +1,12 @@
 package net.joseplay.plugin.commands;
 
 import net.joseplay.core.couple.Couple;
+import net.joseplay.plugin.Plugin;
+import net.joseplay.plugin.config.Messages;
 import net.joseplay.plugin.menu.CoupleSettings;
 import net.joseplay.plugin.menu.MarriageMenuManager;
 import net.joseplay.plugin.service.MarriageService;
-import net.joseplay.plugin.shop.HeartsShop;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -17,21 +17,23 @@ import org.jspecify.annotations.NonNull;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 public class MarriageCommands implements CommandExecutor, TabCompleter {
+    private final Plugin plugin;
     private final MarriageMenuManager menuManager;
     private final MarriageService marriageService;
-    private final HeartsShop heartsShop;
+    private final Messages messages;
 
     public MarriageCommands(
+            Plugin plugin,
             MarriageMenuManager menuManager,
             MarriageService marriageService,
-            HeartsShop heartsShop
+            Messages messages
     ) {
+        this.plugin = plugin;
         this.menuManager = menuManager;
         this.marriageService = marriageService;
-        this.heartsShop = heartsShop;
+        this.messages = messages;
     }
 
     @Override
@@ -46,7 +48,7 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
                 handleReload(sender);
                 return true;
             }
-            sender.sendMessage("Only players can use this command.");
+            messages.send(sender, "commands.player-only");
             return true;
         }
 
@@ -72,19 +74,19 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
 
     private void handleMarry(Player player, String[] args) {
         if (args.length < 2 || args[1].isBlank()) {
-            player.sendMessage(ChatColor.RED + "Usage: /marry <player>");
+            messages.send(player, "commands.marry-usage");
             return;
         }
 
         Player target = Bukkit.getPlayerExact(args[1]);
 
         if (target == null) {
-            player.sendMessage(ChatColor.RED + "Player is not online.");
+            messages.send(player, "validation.player-offline");
             return;
         }
 
         if (target.getUniqueId().equals(player.getUniqueId())) {
-            player.sendMessage(ChatColor.RED + "You cannot marry yourself.");
+            messages.send(player, "validation.cannot-marry-self");
             return;
         }
 
@@ -98,7 +100,7 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
     private void handleAccept(Player player) {
         Optional<UUID> pendingRequester = marriageService.getPendingRequester(player.getUniqueId());
         if (pendingRequester.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "You do not have any pending marriage proposals.");
+            messages.send(player, "validation.no-pending-proposal");
             return;
         }
 
@@ -108,7 +110,7 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
     private void handleDeny(Player player) {
         Optional<UUID> pendingRequester = marriageService.getPendingRequester(player.getUniqueId());
         if (pendingRequester.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "You do not have any pending marriage proposals.");
+            messages.send(player, "validation.no-pending-proposal");
             return;
         }
 
@@ -119,7 +121,7 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
         marriageService.getCouple(player.getUniqueId())
                 .thenAccept(coupleOpt -> {
                     if (coupleOpt.isEmpty()) {
-                        player.sendMessage(ChatColor.RED + "You are not married.");
+                        messages.send(player, "validation.not-married");
                         return;
                     }
 
@@ -127,12 +129,11 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
 
                     Bukkit.getScheduler().runTask(menuManager.getPlugin(), () -> {
                         CoupleSettings coupleSettings = new CoupleSettings(player, couple, menuManager);
-
                         menuManager.getMenuManager().open(player, coupleSettings);
                     });
                 })
                 .exceptionally(throwable -> {
-                    player.sendMessage(ChatColor.RED + "An error occurred while loading your couple data.");
+                    messages.send(player, "validation.couple-load-error");
                     throwable.printStackTrace();
                     return null;
                 });
@@ -144,12 +145,12 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
 
     private void handleReload(CommandSender sender) {
         if (!sender.hasPermission("marry.admin") && !sender.isOp()) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to reload the marriage plugin.");
+            messages.send(sender, "commands.no-permission");
             return;
         }
 
-        heartsShop.load();
-        sender.sendMessage(ChatColor.GREEN + "[AllianceMarriage] Hearts shop configuration reloaded successfully!");
+        boolean success = plugin.reloadPluginConfiguration();
+        messages.send(sender, success ? "commands.reload-success" : "commands.reload-partial");
     }
 
     @Override
@@ -169,7 +170,7 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
 
         if (args.length == 2 && args[0].equalsIgnoreCase("marry")) {
             String input = args[1].toLowerCase();
-            Player player = sender instanceof Player p ? p : null;
+            Player player = sender instanceof Player commandPlayer ? commandPlayer : null;
 
             return Bukkit.getOnlinePlayers()
                     .stream()
@@ -184,16 +185,10 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
     }
 
     private void sendUsage(Player player, String label) {
-        player.sendMessage(ChatColor.LIGHT_PURPLE + "=== AllianceMarriage Commands ===");
-        player.sendMessage(ChatColor.YELLOW + "/" + label + " menu" + ChatColor.GRAY + " - Open main marriage menu");
-        player.sendMessage(ChatColor.YELLOW + "/" + label + " shop" + ChatColor.GRAY + " - Open Hearts shop");
-        player.sendMessage(ChatColor.YELLOW + "/" + label + " marry <player>" + ChatColor.GRAY + " - Propose to a player");
-        player.sendMessage(ChatColor.YELLOW + "/" + label + " accept" + ChatColor.GRAY + " - Accept a proposal");
-        player.sendMessage(ChatColor.YELLOW + "/" + label + " deny" + ChatColor.GRAY + " - Decline a proposal");
-        player.sendMessage(ChatColor.YELLOW + "/" + label + " couple" + ChatColor.GRAY + " - View marriage points");
-        player.sendMessage(ChatColor.YELLOW + "/" + label + " divorce" + ChatColor.GRAY + " - Divorce your partner");
+        messages.send(player, "commands.usage-header");
+        messages.sendList(player, "commands.usage", "%label%", label);
         if (player.hasPermission("marry.admin") || player.isOp()) {
-            player.sendMessage(ChatColor.YELLOW + "/" + label + " reload" + ChatColor.GRAY + " - Reload shop configuration");
+            messages.send(player, "commands.usage-reload", "%label%", label);
         }
     }
 }

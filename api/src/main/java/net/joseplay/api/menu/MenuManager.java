@@ -1,6 +1,6 @@
 package net.joseplay.api.menu;
 
-import org.bukkit.ChatColor;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -10,6 +10,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,10 +20,21 @@ public class MenuManager implements Listener {
     private final Map<UUID, Menu> openMenus = new ConcurrentHashMap<>();
 
     public void shutdown() {
-        for  (Menu menu : openMenus.values()) {
-            menu.getInventory();
-            menu.getInventory().clear();
+        closeAll();
+    }
+
+    /**
+     * Closes every open menu. Call this after a configuration reload so players
+     * do not keep inventories built from stale YAML values.
+     */
+    public void closeAll() {
+        for (UUID uuid : List.copyOf(openMenus.keySet())) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                player.closeInventory();
+            }
         }
+        openMenus.clear();
     }
 
     public void open(Player player, Menu menu) {

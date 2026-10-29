@@ -14,4 +14,7 @@ public interface ShopLayout {
     default boolean isProductSlot(int slot) {
         return getProductSlots().contains(slot);
     }
+
+    default void reload() {
+    }
 }

@@ -3,6 +3,7 @@ package net.joseplay.plugin.listeners;
 import net.joseplay.core.Core;
 import net.joseplay.core.couple.Couple;
 import net.joseplay.core.storage.impls.CouplesImpl;
+import net.joseplay.plugin.config.Messages;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -14,6 +15,11 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class MarriageListeners implements Listener {
+    private final Messages messages;
+
+    public MarriageListeners(Messages messages) {
+        this.messages = messages;
+    }
 
     @EventHandler
     public void onPvP(EntityDamageByEntityEvent e) {
@@ -22,19 +28,16 @@ public class MarriageListeners implements Listener {
             Couple couple = ((CouplesImpl) Core.getInstance().getCouplesRepository())
                     .getCoupleFromCache(damager.getUniqueId());
 
-
             if (couple != null) {
-
                 boolean isPartner = couple.getPartner1().equals(target.getUniqueId())
                         || couple.getPartner2().equals(target.getUniqueId());
 
-                if (isPartner && !(boolean) couple.features().get("pvp")){
-                    damager.sendMessage("§cPvP has inactive for couple");
+                if (isPartner && !(boolean) couple.features().get("pvp")) {
+                    messages.send(damager, "pvp.disabled");
                     e.setCancelled(true);
                 }
             }
         }
-
     }
 
     @EventHandler
@@ -58,5 +61,4 @@ public class MarriageListeners implements Listener {
                     return null;
                 });
     }
-
 }

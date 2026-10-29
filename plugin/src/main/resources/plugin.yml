@@ -10,3 +10,8 @@ commands:
     aliases:
       - mg
       - marry
+
+permissions:
+  marry.admin:
+    description: Reload AllianceMarriage configuration
+    default: op

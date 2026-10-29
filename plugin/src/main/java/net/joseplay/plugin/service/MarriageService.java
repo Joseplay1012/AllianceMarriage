@@ -4,8 +4,8 @@ import net.joseplay.core.Core;
 import net.joseplay.core.contexts.MarryContextResult;
 import net.joseplay.core.couple.Couple;
 import net.joseplay.core.storage.CouplesRepository;
+import net.joseplay.plugin.config.Messages;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -19,16 +19,18 @@ public class MarriageService {
 
     public record MarriageRequest(UUID requester, UUID target, long timestamp) {
         public boolean isExpired() {
-            return System.currentTimeMillis() - timestamp > 60_000L; // 60 seconds expiration
+            return System.currentTimeMillis() - timestamp > 60_000L;
         }
     }
 
     private final Plugin plugin;
+    private final Messages messages;
     private final CouplesRepository couplesRepository;
     private final Map<UUID, MarriageRequest> pendingRequests = new ConcurrentHashMap<>();
 
-    public MarriageService(Plugin plugin) {
+    public MarriageService(Plugin plugin, Messages messages) {
         this.plugin = plugin;
+        this.messages = messages;
         this.couplesRepository = Core.getInstance().getCouplesRepository();
     }
 
@@ -47,19 +49,19 @@ public class MarriageService {
 
     public CompletableFuture<Boolean> sendRequest(Player requester, Player target) {
         if (requester.getUniqueId().equals(target.getUniqueId())) {
-            requester.sendMessage(ChatColor.RED + "You cannot marry yourself.");
+            messages.send(requester, "validation.cannot-marry-self");
             return CompletableFuture.completedFuture(false);
         }
 
         return couplesRepository.findPartner(requester.getUniqueId()).thenCompose(partner1 -> {
             if (partner1.isPresent()) {
-                requester.sendMessage(ChatColor.RED + "You are already married.");
+                messages.send(requester, "validation.already-married");
                 return CompletableFuture.completedFuture(false);
             }
 
             return couplesRepository.findPartner(target.getUniqueId()).thenApply(partner2 -> {
                 if (partner2.isPresent()) {
-                    requester.sendMessage(ChatColor.RED + target.getName() + " is already married.");
+                    messages.send(requester, "validation.target-already-married", "%player%", target.getName());
                     return false;
                 }
 
@@ -70,8 +72,8 @@ public class MarriageService {
                 );
                 pendingRequests.put(target.getUniqueId(), request);
 
-                requester.sendMessage(ChatColor.GREEN + "Marriage proposal sent to " + ChatColor.LIGHT_PURPLE + target.getName() + ChatColor.GREEN + "!");
-                target.sendMessage(ChatColor.LIGHT_PURPLE + requester.getName() + ChatColor.GREEN + " sent you a marriage proposal!");
+                messages.send(requester, "marriage.proposal-sent", "%player%", target.getName());
+                messages.send(target, "marriage.proposal-received", "%player%", requester.getName());
 
                 return true;
             });
@@ -94,7 +96,7 @@ public class MarriageService {
         MarriageRequest request = pendingRequests.get(target.getUniqueId());
         if (request == null || !request.requester().equals(requesterUuid) || request.isExpired()) {
             pendingRequests.remove(target.getUniqueId());
-            target.sendMessage(ChatColor.RED + "This marriage proposal has expired or does not exist.");
+            messages.send(target, "marriage.proposal-expired");
             return CompletableFuture.completedFuture(MarryContextResult.error(
                     requesterUuid,
                     target.getUniqueId(),
@@ -109,14 +111,14 @@ public class MarriageService {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 Player requester = Bukkit.getPlayer(requesterUuid);
                 if (result.isError()) {
-                    target.sendMessage(ChatColor.RED + result.getErrorMessage());
+                    sendMarriageError(target, result);
                     if (requester != null && requester.isOnline()) {
-                        requester.sendMessage(ChatColor.RED + result.getErrorMessage());
+                        sendMarriageError(requester, result);
                     }
                 } else {
-                    target.sendMessage(ChatColor.GREEN + "You are now married!");
+                    messages.send(target, "marriage.married");
                     if (requester != null && requester.isOnline()) {
-                        requester.sendMessage(ChatColor.GREEN + target.getName() + " accepted your marriage proposal! You are now married!");
+                        messages.send(requester, "marriage.accepted-requester", "%player%", target.getName());
                     }
                 }
             });
@@ -125,12 +127,12 @@ public class MarriageService {
     }
 
     public void denyRequest(Player target, UUID requesterUuid) {
-        MarriageRequest request = pendingRequests.remove(target.getUniqueId());
-        target.sendMessage(ChatColor.YELLOW + "You declined the marriage proposal.");
+        pendingRequests.remove(target.getUniqueId());
+        messages.send(target, "marriage.declined-target");
 
         Player requester = Bukkit.getPlayer(requesterUuid);
         if (requester != null && requester.isOnline()) {
-            requester.sendMessage(ChatColor.RED + target.getName() + " declined your marriage proposal.");
+            messages.send(requester, "marriage.declined-requester", "%player%", target.getName());
         }
     }
 
@@ -138,12 +140,29 @@ public class MarriageService {
         return couplesRepository.divorcePlayer(player.getUniqueId()).thenApply(result -> {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (result.isError()) {
-                    player.sendMessage(ChatColor.RED + result.getErrorMessage());
+                    sendMarriageError(player, result);
                 } else {
-                    player.sendMessage(ChatColor.GREEN + "You are now divorced.");
+                    messages.send(player, "marriage.divorced");
                 }
             });
             return result;
         });
+    }
+
+    private void sendMarriageError(Player player, MarryContextResult result) {
+        if (result.getErrorType() == MarryContextResult.MarryErrorType.ALREADY_MARRIED) {
+            messages.send(player, "marriage.already-married");
+            return;
+        }
+        if (result.getErrorType() == MarryContextResult.MarryErrorType.PARTNER_ALREADY_MARRIED) {
+            messages.send(player, "marriage.partner-already-married");
+            return;
+        }
+        if (result.getErrorType() == MarryContextResult.MarryErrorType.NOT_MARRIED) {
+            messages.send(player, "marriage.player-not-married");
+            return;
+        }
+        String error = result.getErrorMessage() != null ? result.getErrorMessage() : "";
+        messages.send(player, "marriage.error", "%error%", error);
     }
 }

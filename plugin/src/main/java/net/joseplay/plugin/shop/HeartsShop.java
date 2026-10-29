@@ -20,6 +20,7 @@ public class HeartsShop {
     public synchronized void load() {
         items.clear();
         items.putAll(loader.load());
+        layout.reload();
     }
 
     public synchronized Map<String, HeartsShopItem> getItems() {

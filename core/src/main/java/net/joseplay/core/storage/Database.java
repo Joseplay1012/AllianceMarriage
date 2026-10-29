@@ -16,7 +16,6 @@ public class Database {
     private final PluginSettings settings;
     private final JavaPlugin plugin;
     private HikariDataSource dataSource;
-    public boolean mysql;
     private final ExecutorService databaseExecutor;
 
     @FunctionalInterface
@@ -28,10 +27,11 @@ public class Database {
     public Database(PluginSettings pluginSettings, JavaPlugin plugin) {
         this.settings = pluginSettings;
         this.plugin = plugin;
+        databaseExecutor = Executors.newFixedThreadPool(mysql() ? 8 : 1);
+    }
 
-        mysql = settings.mysql();
-
-        databaseExecutor = Executors.newFixedThreadPool(mysql ? 8 : 1);
+    public boolean mysql(){
+        return settings.mysql();
     }
 
 
@@ -41,7 +41,7 @@ public class Database {
         config.setPoolName("AllianceMariage");
         config.setConnectionTimeout(10000);
 
-        if (mysql){
+        if (mysql()){
             config.setJdbcUrl("jdbc:mysql://" + settings.mysqlHost() + ":" + settings.mysqlPort() + "/"
                     + settings.mysqlDatabase() + "?useSSL=false&characterEncoding=utf8");
 

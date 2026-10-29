@@ -1,0 +1,10 @@
+debug: false
+
+database:
+  mysql:
+    enabled: false
+    host: localhost
+    port: 3306
+    database: AllianceMariage
+    username: root
+    password: admin

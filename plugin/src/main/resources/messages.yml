@@ -1,0 +1,56 @@
+commands:
+  player-only: "&cOnly players can use this command."
+  no-permission: "&cYou do not have permission to reload the marriage plugin."
+  reload-success: "&a[AllianceMarriage] Configuration reloaded successfully!"
+  reload-partial: "&e[AllianceMarriage] Configuration reloaded with warnings. Check the console."
+  usage-header: "&d=== AllianceMarriage Commands ==="
+  usage:
+    - "&e/%label% menu&7 - Open main marriage menu"
+    - "&e/%label% shop&7 - Open Hearts shop"
+    - "&e/%label% marry <player>&7 - Propose to a player"
+    - "&e/%label% accept&7 - Accept a proposal"
+    - "&e/%label% deny&7 - Decline a proposal"
+    - "&e/%label% couple&7 - View marriage points"
+    - "&e/%label% divorce&7 - Divorce your partner"
+  usage-reload: "&e/%label% reload&7 - Reload plugin configuration"
+  marry-usage: "&cUsage: /marry <player>"
+
+validation:
+  player-offline: "&cPlayer is not online."
+  cannot-marry-self: "&cYou cannot marry yourself."
+  no-pending-proposal: "&cYou do not have any pending marriage proposals."
+  not-married: "&cYou are not married."
+  already-married: "&cYou are already married."
+  target-already-married: "&c%player% is already married."
+  couple-load-error: "&cAn error occurred while loading your couple data."
+
+marriage:
+  duration: "%days% days, %hours% hours, %minutes% minutes"
+  duration-future: "&c Did you get married in the future?"
+  partner-online: "&aOnline"
+  partner-offline: "&7Offline"
+  partner-fallback: "Partner"
+  unknown-player: "Unknown"
+  proposal-sent: "&aMarriage proposal sent to &d%player%&a!"
+  proposal-received: "&d%player% &asent you a marriage proposal!"
+  proposal-expired: "&cThis marriage proposal has expired or does not exist."
+  married: "&aYou are now married!"
+  accepted-requester: "&a%player% accepted your marriage proposal! You are now married!"
+  declined-target: "&eYou declined the marriage proposal."
+  declined-requester: "&c%player% declined your marriage proposal."
+  divorced: "&aYou are now divorced."
+  error: "&c%error%"
+  already-married: "&cPlayer is already married."
+  partner-already-married: "&cPartner is already married."
+  player-not-married: "&cPlayer is not married."
+
+shop:
+  purchase-in-progress: "&cPlease wait, your previous purchase is still processing."
+  must-be-married: "&cYou must be married to purchase items from the Hearts shop!"
+  not-enough-hearts: "&cYou do not have enough Hearts! Price: &d♥ %price%&c, Current balance: &d♥ %hearts%"
+  purchased: "&aPurchased &e%item% &afor &d♥ %price% Hearts&a! Remaining balance: &d♥ %hearts%"
+  purchase-error: "&cAn error occurred while processing your purchase. No Hearts were lost."
+  couple-data-error: "&cCould not retrieve marriage data."
+
+pvp:
+  disabled: "&cPvP is inactive for this couple."

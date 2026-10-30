@@ -43,6 +43,7 @@ marriage:
   already-married: "&cPlayer is already married."
   partner-already-married: "&cPartner is already married."
   player-not-married: "&cPlayer is not married."
+  couple-win-hearts: "§aYou earned &e%hearts%&a for playing with your partner."
 
 shop:
   purchase-in-progress: "&cPlease wait, your previous purchase is still processing."

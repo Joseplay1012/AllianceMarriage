@@ -1,11 +1,13 @@
 package net.joseplay.plugin;
 
+import net.joseplay.api.cooldown.CooldownManager;
 import net.joseplay.api.menu.MenuManager;
 import net.joseplay.api.preferences.PreferencesManager;
 import net.joseplay.core.Core;
 import net.joseplay.core.config.ConfigManager;
 import net.joseplay.core.config.PluginSettings;
 import net.joseplay.plugin.commands.MarriageCommands;
+import net.joseplay.plugin.config.ActivitiesConfig;
 import net.joseplay.plugin.config.MenuConfig;
 import net.joseplay.plugin.config.Messages;
 import net.joseplay.plugin.listeners.MarriageListeners;
@@ -26,12 +28,14 @@ public final class Plugin extends JavaPlugin {
     private ConfigManager configManager;
     private PluginSettings pluginSettings;
     private Messages messages;
+    private ActivitiesConfig activitiesConfig;
     private MenuConfig menuConfig;
     private MarriageService marriageService;
     private HeartsShop heartsShop;
     private HeartsShopService heartsShopService;
     private MarriageMenuManager marriageMenuManager;
     private PreferencesManager preferencesManager;
+    private final CooldownManager coolDownManager = new CooldownManager();
 
     @Override
     public void onEnable() {
@@ -44,10 +48,12 @@ public final class Plugin extends JavaPlugin {
         configManager.register("messages");
         configManager.register("menus");
         configManager.register("hearts-shop");
+        configManager.register("activities");
 
         pluginSettings = new PluginSettings(configManager.require("config"));
         messages = new Messages(configManager.require("messages"));
         menuConfig = new MenuConfig(configManager.require("menus"), getLogger());
+        activitiesConfig = new ActivitiesConfig(configManager.require("activities"));
 
         core = new Core(this, pluginSettings);
         core.onEnable();
@@ -91,7 +97,7 @@ public final class Plugin extends JavaPlugin {
         getLogger().info("Registered command: /marriage");
 
         getLogger().info("Registering listeners...");
-        Bukkit.getPluginManager().registerEvents(new MarriageListeners(messages), this);
+        Bukkit.getPluginManager().registerEvents(new MarriageListeners(messages, activitiesConfig), this);
 
         getLogger().info("Plugin enabled successfully.");
     }
@@ -157,6 +163,10 @@ public final class Plugin extends JavaPlugin {
         return menuConfig;
     }
 
+    public ActivitiesConfig getActivitiesConfig() {
+        return activitiesConfig;
+    }
+
     public MarriageService getMarriageService() {
         return marriageService;
     }
@@ -179,5 +189,9 @@ public final class Plugin extends JavaPlugin {
 
     public static Plugin getInstance() {
         return instance;
+    }
+
+    public CooldownManager getCoolDownManager() {
+        return coolDownManager;
     }
 }

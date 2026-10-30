@@ -1,0 +1,252 @@
+# Controls the rewards players receive for performing activities with their partner.
+#
+# Each activity supports the following options:
+#   cooldown: Time in seconds before the activity can reward hearts again.
+#   hearts: Number of hearts awarded when the reward succeeds.
+#   chance: Probability of receiving the reward (0-100).
+#
+# Cooldowns are shared between both partners and are tracked per couple.
+# Changes can be applied by reloading the configuration.
+config:
+  max-distance: 10.0 #blocks
+
+activities:
+  interact:
+    cooldown: 10
+    hearts: 1
+    chance: 100.0
+
+  deathentity:
+    cooldown: 60
+    hearts: 1
+    chance: 25.0
+
+  killtogether:
+    cooldown: 60
+    hearts: 2
+    chance: 50.0
+
+  fishing:
+    cooldown: 30
+    hearts: 1
+    chance: 30.0
+
+  plant:
+    cooldown: 30
+    hearts: 1
+    chance: 20.0
+
+  harvest:
+    cooldown: 30
+    hearts: 1
+    chance: 25.0
+
+  breed:
+    cooldown: 60
+    hearts: 1
+    chance: 40.0
+
+  sleep:
+    cooldown: 120
+    hearts: 2
+    chance: 100.0
+
+  mining:
+    cooldown: 15
+    hearts: 1
+    chance: 15.0
+
+  woodcutting:
+    cooldown: 15
+    hearts: 1
+    chance: 20.0
+
+  cooking:
+    cooldown: 30
+    hearts: 1
+    chance: 30.0
+
+  boat:
+    cooldown: 30
+    hearts: 1
+    chance: 100.0
+
+  mobhunt:
+    cooldown: 60
+    hearts: 1
+    chance: 30.0
+
+  bosskill:
+    cooldown: 300
+    hearts: 5
+    chance: 100.0
+
+  playerkill:
+    cooldown: 120
+    hearts: 2
+    chance: 50.0
+
+  survivalnight:
+    cooldown: 300
+    hearts: 2
+    chance: 100.0
+
+  dungeon:
+    cooldown: 300
+    hearts: 3
+    chance: 100.0
+
+  caveexplore:
+    cooldown: 120
+    hearts: 1
+    chance: 30.0
+
+  newbiome:
+    cooldown: 300
+    hearts: 2
+    chance: 100.0
+
+  structure:
+    cooldown: 300
+    hearts: 2
+    chance: 50.0
+
+  raid:
+    cooldown: 300
+    hearts: 3
+    chance: 100.0
+
+  portal:
+    cooldown: 120
+    hearts: 1
+    chance: 100.0
+
+  eat:
+    cooldown: 30
+    hearts: 1
+    chance: 30.0
+
+  potion:
+    cooldown: 60
+    hearts: 1
+    chance: 30.0
+
+  anvil:
+    cooldown: 60
+    hearts: 1
+    chance: 30.0
+
+  enchant:
+    cooldown: 120
+    hearts: 1
+    chance: 50.0
+
+  craft:
+    cooldown: 30
+    hearts: 1
+    chance: 30.0
+
+  chest:
+    cooldown: 30
+    hearts: 1
+    chance: 20.0
+
+  placeblock:
+    cooldown: 15
+    hearts: 1
+    chance: 20.0
+
+  breakblock:
+    cooldown: 15
+    hearts: 1
+    chance: 15.0
+
+  furnace:
+    cooldown: 60
+    hearts: 1
+    chance: 30.0
+
+  jukebox:
+    cooldown: 60
+    hearts: 1
+    chance: 30.0
+
+  travel:
+    cooldown: 300
+    hearts: 2
+    chance: 100.0
+
+  swimming:
+    cooldown: 60
+    hearts: 1
+    chance: 30.0
+
+  elytra:
+    cooldown: 120
+    hearts: 1
+    chance: 50.0
+
+  horse:
+    cooldown: 60
+    hearts: 1
+    chance: 50.0
+
+  minecart:
+    cooldown: 60
+    hearts: 1
+    chance: 50.0
+
+  nether:
+    cooldown: 300
+    hearts: 2
+    chance: 100.0
+
+  theend:
+    cooldown: 300
+    hearts: 3
+    chance: 100.0
+
+  portaltravel:
+    cooldown: 120
+    hearts: 1
+    chance: 100.0
+
+  trade:
+    cooldown: 60
+    hearts: 1
+    chance: 50.0
+
+  gift:
+    cooldown: 60
+    hearts: 1
+    chance: 50.0
+
+  protect:
+    cooldown: 60
+    hearts: 1
+    chance: 30.0
+
+  healpartner:
+    cooldown: 60
+    hearts: 1
+    chance: 50.0
+
+  revive:
+    cooldown: 300
+    hearts: 3
+    chance: 100.0
+
+  sit:
+    cooldown: 60
+    hearts: 1
+    chance: 100.0
+
+  fireworks:
+    cooldown: 120
+    hearts: 1
+    chance: 100.0
+
+  music:
+    cooldown: 120
+    hearts: 1
+    chance: 100.0

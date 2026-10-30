@@ -6,6 +6,9 @@ import net.joseplay.core.storage.FeatureRepository;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Couple {
 
@@ -17,6 +20,7 @@ public final class Couple {
     private final Instant createdAt;
 
     private final FeatureManager features;
+    private final AtomicBoolean pointsInProcess = new AtomicBoolean(false);
 
     public Couple(
             UUID id,
@@ -62,5 +66,31 @@ public final class Couple {
 
     public FeatureManager features() {
         return features;
+    }
+
+    public CompletableFuture<Integer> addHeartsWithChance(int points, double chance) {
+        if (!pointsInProcess.compareAndSet(false, true)) {
+            return CompletableFuture.completedFuture(0);
+        }
+
+        if (features == null || !features.has("hearts")) {
+            pointsInProcess.set(false);
+            return CompletableFuture.completedFuture(0);
+        }
+
+        if (ThreadLocalRandom.current().nextDouble() >= chance / 100.0) {
+            pointsInProcess.set(false);
+            return CompletableFuture.completedFuture(0);
+        }
+
+        return features.increment("hearts", points)
+                .whenComplete((hearts, exception) ->
+                        pointsInProcess.set(false)
+                );
+    }
+
+    public boolean isPartner(UUID target){
+        return partner1.equals(target)
+                || partner2.equals(target);
     }
 }

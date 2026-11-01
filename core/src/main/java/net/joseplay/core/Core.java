@@ -29,40 +29,58 @@ public final class Core {
         this.plugin = plugin;
         this.pluginSettings = pluginSettings != null ? pluginSettings : new PluginSettings(null);
 
-        plugin.getLogger().info("Initializing Core...");
+        if (plugin != null) {
+            plugin.getLogger().info("Initializing Core...");
+        }
 
         this.dataBase = new Database(this.pluginSettings, plugin);
 
-        plugin.getLogger().info("Starting database connection...");
-        dataBase.start();
-        plugin.getLogger().info("Database started successfully.");
+        if (plugin != null) {
+            plugin.getLogger().info("Starting database connection...");
+        }
+        dataBase.start().join();
+        if (plugin != null) {
+            plugin.getLogger().info("Database started successfully.");
+        }
 
         this.featureRepository = new FeaturesImpl(dataBase, plugin);
-        this.couplesRepository = new CouplesImpl();
+        this.couplesRepository = new CouplesImpl(dataBase, featureRegistry, featureRepository);
 
-        plugin.getLogger().info("Repositories initialized.");
-        plugin.getLogger().info("Core initialized successfully.");
+        if (plugin != null) {
+            plugin.getLogger().info("Repositories initialized.");
+            plugin.getLogger().info("Core initialized successfully.");
+        }
     }
 
     public void onEnable() {
-        plugin.getLogger().info("Enabling Core features...");
+        if (plugin != null) {
+            plugin.getLogger().info("Enabling Core features...");
+        }
 
         featureRegistry.register(new HeartsFeature());
         featureRegistry.register(new PvPFeature());
 
-        plugin.getLogger().info("Core enabled successfully.");
+        if (plugin != null) {
+            plugin.getLogger().info("Core enabled successfully.");
+        }
     }
 
     public void onDisable() {
-        plugin.getLogger().info("Disabling Core...");
+        if (plugin != null) {
+            plugin.getLogger().info("Disabling Core...");
+        }
 
         dataBase.shutdown();
 
-        plugin.getLogger().info("Database shut down successfully.");
+        if (plugin != null) {
+            plugin.getLogger().info("Database shut down successfully.");
+        }
 
         featureRegistry.clear();
 
-        plugin.getLogger().info("Core disabled successfully.");
+        if (plugin != null) {
+            plugin.getLogger().info("Core disabled successfully.");
+        }
     }
 
     public FeatureRegistry getFeatureRegistry() {

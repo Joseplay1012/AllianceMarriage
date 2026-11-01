@@ -141,6 +141,11 @@ activities:
     hearts: 1
     chance: 50.0
 
+  advancement:
+    cooldown: 120
+    hearts: 2
+    chance: 100.0
+
   craft:
     cooldown: 30
     hearts: 1

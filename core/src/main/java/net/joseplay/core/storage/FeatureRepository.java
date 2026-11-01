@@ -16,6 +16,8 @@ public interface FeatureRepository {
 
     CompletableFuture<String> increment(String coupleId, String feature, String type, String amount);
 
+    CompletableFuture<Boolean> decrementIfSufficient(String coupleId, String feature, int amount);
+
     CompletableFuture<Void> delete(
             String coupleId,
             String feature

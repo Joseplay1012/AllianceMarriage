@@ -92,7 +92,9 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
 
         marriageService.sendRequest(player, target).thenAccept(sent -> {
             if (sent) {
-                menuManager.openMarriageRequestMenu(target, player.getUniqueId());
+                Bukkit.getScheduler().runTask(menuManager.getPlugin(), () -> {
+                    menuManager.openMarriageRequestMenu(target, player.getUniqueId());
+                });
             }
         });
     }
@@ -120,20 +122,21 @@ public class MarriageCommands implements CommandExecutor, TabCompleter {
     private void handleCouple(Player player) {
         marriageService.getCouple(player.getUniqueId())
                 .thenAccept(coupleOpt -> {
-                    if (coupleOpt.isEmpty()) {
-                        messages.send(player, "validation.not-married");
-                        return;
-                    }
-
-                    Couple couple = coupleOpt.get();
-
                     Bukkit.getScheduler().runTask(menuManager.getPlugin(), () -> {
+                        if (coupleOpt.isEmpty()) {
+                            messages.send(player, "validation.not-married");
+                            return;
+                        }
+
+                        Couple couple = coupleOpt.get();
                         CoupleSettings coupleSettings = new CoupleSettings(player, couple, menuManager);
                         menuManager.getMenuManager().open(player, coupleSettings);
                     });
                 })
                 .exceptionally(throwable -> {
-                    messages.send(player, "validation.couple-load-error");
+                    Bukkit.getScheduler().runTask(menuManager.getPlugin(), () -> {
+                        messages.send(player, "validation.couple-load-error");
+                    });
                     throwable.printStackTrace();
                     return null;
                 });

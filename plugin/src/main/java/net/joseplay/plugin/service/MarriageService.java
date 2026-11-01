@@ -28,10 +28,14 @@ public class MarriageService {
     private final CouplesRepository couplesRepository;
     private final Map<UUID, MarriageRequest> pendingRequests = new ConcurrentHashMap<>();
 
-    public MarriageService(Plugin plugin, Messages messages) {
+    public MarriageService(Plugin plugin, Messages messages, CouplesRepository couplesRepository) {
         this.plugin = plugin;
         this.messages = messages;
-        this.couplesRepository = Core.getInstance().getCouplesRepository();
+        this.couplesRepository = couplesRepository != null ? couplesRepository : (Core.getInstance() != null ? Core.getInstance().getCouplesRepository() : null);
+    }
+
+    public MarriageService(Plugin plugin, Messages messages) {
+        this(plugin, messages, Core.getInstance() != null ? Core.getInstance().getCouplesRepository() : null);
     }
 
     public CouplesRepository getCouplesRepository() {
@@ -39,6 +43,9 @@ public class MarriageService {
     }
 
     public CompletableFuture<Optional<Couple>> getCouple(UUID playerUuid) {
+        if (couplesRepository == null) {
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
         return couplesRepository.findPartner(playerUuid).thenCompose(partnerOpt -> {
             if (partnerOpt.isEmpty()) {
                 return CompletableFuture.completedFuture(Optional.empty());
@@ -48,20 +55,35 @@ public class MarriageService {
     }
 
     public CompletableFuture<Boolean> sendRequest(Player requester, Player target) {
+        if (couplesRepository == null) {
+            return CompletableFuture.completedFuture(false);
+        }
         if (requester.getUniqueId().equals(target.getUniqueId())) {
-            messages.send(requester, "validation.cannot-marry-self");
+            if (messages != null) messages.send(requester, "validation.cannot-marry-self");
             return CompletableFuture.completedFuture(false);
         }
 
         return couplesRepository.findPartner(requester.getUniqueId()).thenCompose(partner1 -> {
             if (partner1.isPresent()) {
-                messages.send(requester, "validation.already-married");
+                if (plugin != null && Bukkit.getServer() != null) {
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (messages != null) messages.send(requester, "validation.already-married");
+                    });
+                } else if (messages != null) {
+                    messages.send(requester, "validation.already-married");
+                }
                 return CompletableFuture.completedFuture(false);
             }
 
             return couplesRepository.findPartner(target.getUniqueId()).thenApply(partner2 -> {
                 if (partner2.isPresent()) {
-                    messages.send(requester, "validation.target-already-married", "%player%", target.getName());
+                    if (plugin != null && Bukkit.getServer() != null) {
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            if (messages != null) messages.send(requester, "validation.target-already-married", "%player%", target.getName());
+                        });
+                    } else if (messages != null) {
+                        messages.send(requester, "validation.target-already-married", "%player%", target.getName());
+                    }
                     return false;
                 }
 
@@ -72,8 +94,17 @@ public class MarriageService {
                 );
                 pendingRequests.put(target.getUniqueId(), request);
 
-                messages.send(requester, "marriage.proposal-sent", "%player%", target.getName());
-                messages.send(target, "marriage.proposal-received", "%player%", requester.getName());
+                if (plugin != null && Bukkit.getServer() != null) {
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (messages != null) {
+                            messages.send(requester, "marriage.proposal-sent", "%player%", target.getName());
+                            messages.send(target, "marriage.proposal-received", "%player%", requester.getName());
+                        }
+                    });
+                } else if (messages != null) {
+                    messages.send(requester, "marriage.proposal-sent", "%player%", target.getName());
+                    messages.send(target, "marriage.proposal-received", "%player%", requester.getName());
+                }
 
                 return true;
             });
@@ -96,7 +127,7 @@ public class MarriageService {
         MarriageRequest request = pendingRequests.get(target.getUniqueId());
         if (request == null || !request.requester().equals(requesterUuid) || request.isExpired()) {
             pendingRequests.remove(target.getUniqueId());
-            messages.send(target, "marriage.proposal-expired");
+            if (messages != null) messages.send(target, "marriage.proposal-expired");
             return CompletableFuture.completedFuture(MarryContextResult.error(
                     requesterUuid,
                     target.getUniqueId(),
@@ -107,49 +138,82 @@ public class MarriageService {
 
         pendingRequests.remove(target.getUniqueId());
 
+        if (couplesRepository == null) {
+            return CompletableFuture.completedFuture(MarryContextResult.error(
+                    requesterUuid,
+                    target.getUniqueId(),
+                    MarryContextResult.MarryErrorType.NOT_MARRIED,
+                    "Couples repository unavailable."
+            ));
+        }
+
         return couplesRepository.marryPlayer(requesterUuid, target.getUniqueId()).thenApply(result -> {
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                Player requester = Bukkit.getPlayer(requesterUuid);
-                if (result.isError()) {
-                    sendMarriageError(target, result);
-                    if (requester != null && requester.isOnline()) {
-                        sendMarriageError(requester, result);
-                    }
-                } else {
-                    messages.send(target, "marriage.married");
-                    if (requester != null && requester.isOnline()) {
-                        messages.send(requester, "marriage.accepted-requester", "%player%", target.getName());
-                    }
-                }
-            });
+            if (plugin != null && Bukkit.getServer() != null) {
+                Bukkit.getScheduler().runTask(plugin, () -> notifyMarriageResult(target, requesterUuid, result));
+            } else {
+                notifyMarriageResult(target, requesterUuid, result);
+            }
             return result;
         });
     }
 
+    private void notifyMarriageResult(Player target, UUID requesterUuid, MarryContextResult result) {
+        Player requester = Bukkit.getServer() != null ? Bukkit.getPlayer(requesterUuid) : null;
+        if (result.isError()) {
+            sendMarriageError(target, result);
+            if (requester != null && requester.isOnline()) {
+                sendMarriageError(requester, result);
+            }
+        } else {
+            if (messages != null) messages.send(target, "marriage.married");
+            if (requester != null && requester.isOnline() && messages != null) {
+                messages.send(requester, "marriage.accepted-requester", "%player%", target.getName());
+            }
+        }
+    }
+
     public void denyRequest(Player target, UUID requesterUuid) {
         pendingRequests.remove(target.getUniqueId());
-        messages.send(target, "marriage.declined-target");
+        if (messages != null) messages.send(target, "marriage.declined-target");
 
-        Player requester = Bukkit.getPlayer(requesterUuid);
-        if (requester != null && requester.isOnline()) {
+        Player requester = Bukkit.getServer() != null ? Bukkit.getPlayer(requesterUuid) : null;
+        if (requester != null && requester.isOnline() && messages != null) {
             messages.send(requester, "marriage.declined-requester", "%player%", target.getName());
         }
     }
 
     public CompletableFuture<MarryContextResult> divorce(Player player) {
+        if (couplesRepository == null) {
+            return CompletableFuture.completedFuture(MarryContextResult.error(
+                    player.getUniqueId(),
+                    null,
+                    MarryContextResult.MarryErrorType.NOT_MARRIED,
+                    "Couples repository unavailable."
+            ));
+        }
+
         return couplesRepository.divorcePlayer(player.getUniqueId()).thenApply(result -> {
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            if (plugin != null && Bukkit.getServer() != null) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (result.isError()) {
+                        sendMarriageError(player, result);
+                    } else {
+                        if (messages != null) messages.send(player, "marriage.divorced");
+                    }
+                });
+            } else {
                 if (result.isError()) {
                     sendMarriageError(player, result);
                 } else {
-                    messages.send(player, "marriage.divorced");
+                    if (messages != null) messages.send(player, "marriage.divorced");
                 }
-            });
+            }
             return result;
         });
     }
 
     private void sendMarriageError(Player player, MarryContextResult result) {
+        if (messages == null) return;
         if (result.getErrorType() == MarryContextResult.MarryErrorType.ALREADY_MARRIED) {
             messages.send(player, "marriage.already-married");
             return;

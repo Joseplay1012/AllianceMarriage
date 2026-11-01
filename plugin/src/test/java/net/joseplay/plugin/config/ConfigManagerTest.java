@@ -17,6 +17,42 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
 
+    @org.junit.jupiter.api.BeforeAll
+    static void initBukkitServer() {
+        if (org.bukkit.Bukkit.getServer() == null) {
+            org.bukkit.UnsafeValues unsafe = (org.bukkit.UnsafeValues) java.lang.reflect.Proxy.newProxyInstance(
+                    org.bukkit.UnsafeValues.class.getClassLoader(),
+                    new Class<?>[]{org.bukkit.UnsafeValues.class},
+                    (proxy, method, args) -> {
+                        if ("getDataVersion".equals(method.getName())) return 3700;
+                        if ("getMaterial".equals(method.getName())) {
+                            return org.bukkit.Material.getMaterial((String) args[0]);
+                        }
+                        return null;
+                    }
+            );
+            org.bukkit.inventory.ItemFactory itemFactory = (org.bukkit.inventory.ItemFactory) java.lang.reflect.Proxy.newProxyInstance(
+                    org.bukkit.inventory.ItemFactory.class.getClassLoader(),
+                    new Class<?>[]{org.bukkit.inventory.ItemFactory.class},
+                    (proxy, method, args) -> {
+                        if ("equals".equals(method.getName())) return true;
+                        return null;
+                    }
+            );
+            org.bukkit.Server server = (org.bukkit.Server) java.lang.reflect.Proxy.newProxyInstance(
+                    org.bukkit.Server.class.getClassLoader(),
+                    new Class<?>[]{org.bukkit.Server.class},
+                    (proxy, method, args) -> {
+                        if ("getUnsafe".equals(method.getName())) return unsafe;
+                        if ("getItemFactory".equals(method.getName())) return itemFactory;
+                        if ("getLogger".equals(method.getName())) return java.util.logging.Logger.getLogger("test");
+                        return null;
+                    }
+            );
+            org.bukkit.Bukkit.setServer(server);
+        }
+    }
+
     @TempDir
     File tempDir;
 
@@ -52,7 +88,7 @@ class ConfigManagerTest {
         assertTrue(config.isDirty());
 
         assertTrue(config.save());
-        assertFalse(config.isDirty());
+                assertFalse(config.isDirty());
 
         String written = Files.readString(config.getFile().toPath(), StandardCharsets.UTF_8);
         assertTrue(written.contains("updated"));
@@ -142,5 +178,58 @@ class ConfigManagerTest {
         String formatted = Messages.apply("Hello %player%, price %price%", "%player%", "Alex", "%price%", "50");
         assertEquals("Hello Alex, price 50", formatted);
         assertEquals("&aHi", Messages.apply("&aHi"));
+    }
+
+    @Test
+    void reloadMultipleFiles() throws Exception {
+        File file1 = new File(tempDir, "f1.yml");
+        File file2 = new File(tempDir, "f2.yml");
+        Files.writeString(file1.toPath(), "val: 1\n", StandardCharsets.UTF_8);
+        Files.writeString(file2.toPath(), "val: 2\n", StandardCharsets.UTF_8);
+
+        ConfigManager manager = new ConfigManager(tempDir, Logger.getLogger("test"));
+        PluginConfig c1 = manager.register("f1");
+        PluginConfig c2 = manager.register("f2");
+
+        assertEquals(1, c1.getInt("val"));
+        assertEquals(2, c2.getInt("val"));
+
+        // Update both on disk
+        Files.writeString(file1.toPath(), "val: 10\n", StandardCharsets.UTF_8);
+        Files.writeString(file2.toPath(), "val: 20\n", StandardCharsets.UTF_8);
+
+        boolean reloaded = manager.reloadAll(false);
+        assertTrue(reloaded);
+        assertEquals(10, c1.getInt("val"));
+        assertEquals(20, c2.getInt("val"));
+    }
+
+    @Test
+    void itemStackRoundTrip() throws Exception {
+        File file = new File(tempDir, "items.yml");
+        Files.writeString(file.toPath(), "", StandardCharsets.UTF_8);
+        PluginConfig config = new PluginConfig(file, Logger.getLogger("test"));
+
+        org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(org.bukkit.Material.APPLE, 5);
+        config.setItemStack("reward", item);
+        assertTrue(config.save());
+        
+        PluginConfig loaded = new PluginConfig(file, Logger.getLogger("test"));
+                org.bukkit.inventory.ItemStack result = loaded.getItemStack("reward");
+        assertNotNull(result);
+        assertEquals(org.bukkit.Material.APPLE, result.getType());
+        assertEquals(5, result.getAmount());
+    }
+
+    @Test
+    void recoveryOfNonExistentFile() {
+        ConfigManager manager = new ConfigManager(tempDir, Logger.getLogger("test"));
+        File missingFile = new File(tempDir, "newfile.yml");
+        assertFalse(missingFile.exists());
+
+        PluginConfig config = manager.register("newfile");
+        assertNotNull(config);
+        assertFalse(config.hasLoadFailed());
+        assertTrue(missingFile.exists(), "Registering non-existent file creates it cleanly");
     }
 }

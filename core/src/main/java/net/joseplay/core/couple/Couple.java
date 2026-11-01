@@ -5,10 +5,10 @@ import net.joseplay.core.FeatureRegistry;
 import net.joseplay.core.storage.FeatureRepository;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Couple {
 
@@ -20,7 +20,6 @@ public final class Couple {
     private final Instant createdAt;
 
     private final FeatureManager features;
-    private final AtomicBoolean pointsInProcess = new AtomicBoolean(false);
 
     public Couple(
             UUID id,
@@ -31,11 +30,11 @@ public final class Couple {
             FeatureRegistry featureRegistry,
             FeatureRepository featureRepository
     ) {
-        this.id = id;
-        this.partner1 = partner1;
-        this.partner2 = partner2;
+        this.id = Objects.requireNonNull(id, "id");
+        this.partner1 = Objects.requireNonNull(partner1, "partner1");
+        this.partner2 = Objects.requireNonNull(partner2, "partner2");
         this.anniversary = anniversary;
-        this.createdAt = createdAt;
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
 
         this.features = new FeatureManager(
                 featureRegistry,
@@ -69,24 +68,19 @@ public final class Couple {
     }
 
     public CompletableFuture<Integer> addHeartsWithChance(int points, double chance) {
-        if (!pointsInProcess.compareAndSet(false, true)) {
+        if (points <= 0) {
             return CompletableFuture.completedFuture(0);
         }
 
-        if (features == null || !features.has("hearts")) {
-            pointsInProcess.set(false);
+        if (features == null || !features.isRegistered("hearts")) {
             return CompletableFuture.completedFuture(0);
         }
 
         if (ThreadLocalRandom.current().nextDouble() >= chance / 100.0) {
-            pointsInProcess.set(false);
             return CompletableFuture.completedFuture(0);
         }
 
-        return features.increment("hearts", points)
-                .whenComplete((hearts, exception) ->
-                        pointsInProcess.set(false)
-                );
+        return features.increment("hearts", points);
     }
 
     public boolean isPartner(UUID target){

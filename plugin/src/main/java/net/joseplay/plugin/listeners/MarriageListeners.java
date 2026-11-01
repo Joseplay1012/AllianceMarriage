@@ -2,7 +2,6 @@ package net.joseplay.plugin.listeners;
 
 import net.joseplay.core.Core;
 import net.joseplay.core.couple.Couple;
-import net.joseplay.core.storage.impls.CouplesImpl;
 import net.joseplay.plugin.Plugin;
 import net.joseplay.plugin.config.ActivitiesConfig;
 import net.joseplay.plugin.config.Messages;
@@ -39,10 +38,8 @@ import java.util.concurrent.CompletableFuture;
 
 public class MarriageListeners implements Listener {
 
-
     private final Messages messages;
     private final ActivitiesConfig activitiesConfig;
-
 
     public MarriageListeners(Messages messages, ActivitiesConfig activitiesConfig) {
         this.messages = messages;
@@ -60,28 +57,33 @@ public class MarriageListeners implements Listener {
 
         couple.addHeartsWithChance(activityResult.points(), activityResult.canche())
                 .thenAccept(hearts -> {
-                    Plugin.getInstance()
-                            .getCoolDownManager()
-                            .setCooldown(couple.getId(), type, activityResult.cooldown());
-
-                    List<UUID> players = List.of(
-                            couple.getPartner1(),
-                            couple.getPartner2()
-                    );
-
-                    for (UUID uuid : players) {
-                        Player player = Bukkit.getPlayer(uuid);
-
-                        if (player != null && player.isOnline()){
-                            messages.send(player, "couple-win-hearts", "%hearts%", String.valueOf(hearts));
-                        }
+                    if (hearts == null || hearts <= 0) {
+                        return;
                     }
+
+                    Bukkit.getScheduler().runTask(Plugin.getInstance(), () -> {
+                        Plugin.getInstance()
+                                .getCoolDownManager()
+                                .setCooldown(couple.getId(), type, activityResult.cooldown());
+
+                        List<UUID> players = List.of(
+                                couple.getPartner1(),
+                                couple.getPartner2()
+                        );
+
+                        for (UUID uuid : players) {
+                            Player player = Bukkit.getPlayer(uuid);
+
+                            if (player != null && player.isOnline()) {
+                                messages.send(player, "couple-win-hearts", "%hearts%", String.valueOf(hearts));
+                            }
+                        }
+                    });
                 });
     }
 
     private Couple getCouple(UUID player) {
-        return ((CouplesImpl) Core.getInstance().getCouplesRepository())
-                .getCoupleFromCache(player);
+        return Core.getInstance().getCouplesRepository().getCoupleFromCache(player);
     }
 
     private boolean arePartnersNearby(Couple couple) {
@@ -100,11 +102,9 @@ public class MarriageListeners implements Listener {
                 <= max * max;
     }
 
-
     @EventHandler
     public void onPvP(EntityDamageByEntityEvent e) {
         if (e.getDamager() instanceof Player damager && e.getEntity() instanceof Player target) {
-
             Couple couple = getCouple(damager.getUniqueId());
 
             if (couple != null) {
@@ -133,7 +133,7 @@ public class MarriageListeners implements Listener {
                             .find(playerUUID, partner.get());
                 })
                 .exceptionally(throwable -> {
-                    throwable.printStackTrace();
+                    Plugin.getInstance().getLogger().warning("Failed to preload couple data for " + playerUUID + ": " + throwable.getMessage());
                     return null;
                 });
     }
@@ -231,14 +231,12 @@ public class MarriageListeners implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onRaidFinish(RaidFinishEvent event) {
-
         Set<UUID> couplesFilled = new HashSet<>();
         for (Player player : event.getWinners()) {
             Couple couple = getCouple(player.getUniqueId());
-            if (couple == null) return;
+            if (couple == null) continue;
 
             if (couplesFilled.contains(couple.getId())) continue;
-
 
             addHearts(couple, "raid");
             couplesFilled.add(couple.getId());
@@ -247,17 +245,19 @@ public class MarriageListeners implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onAdvancement(PlayerAdvancementDoneEvent event) {
+        if (event.getAdvancement() == null || event.getAdvancement().getKey().getKey().startsWith("recipes/")) {
+            return;
+        }
 
         Couple couple = getCouple(event.getPlayer().getUniqueId());
         if (couple == null) return;
 
-        addHearts(couple, "enchant");
+        addHearts(couple, "advancement");
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onPortalCreate(PortalCreateEvent event) {
         if (event.getEntity() == null || !(event.getEntity() instanceof Player player)) return;
-
 
         Couple couple = getCouple(player.getUniqueId());
         if (couple == null) return;

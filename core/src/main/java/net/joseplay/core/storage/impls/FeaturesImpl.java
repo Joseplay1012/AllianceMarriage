@@ -1,11 +1,8 @@
 package net.joseplay.core.storage.impls;
 
-import net.joseplay.core.Core;
 import net.joseplay.core.feature.StoredFeature;
 import net.joseplay.core.storage.Database;
 import net.joseplay.core.storage.FeatureRepository;
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,16 +12,18 @@ import java.util.concurrent.CompletableFuture;
 
 public class FeaturesImpl implements FeatureRepository {
     private final Database dataBase;
-    private final JavaPlugin plugin;
     private static final Set<String> NUMBER_TYPES = Set.of(
             "INTEGER",
             "DOUBLE",
             "LONG"
     );
 
-    public FeaturesImpl(Database dataBase, JavaPlugin plugin) {
+    public FeaturesImpl(Database dataBase) {
         this.dataBase = dataBase;
-        this.plugin = plugin;
+    }
+
+    public FeaturesImpl(Database dataBase, Object ignoredPlugin) {
+        this(dataBase);
     }
 
     @Override
@@ -131,19 +130,41 @@ public class FeaturesImpl implements FeatureRepository {
     }
 
     @Override
+    public CompletableFuture<Boolean> decrementIfSufficient(String coupleId, String feature, int amount) {
+        if (amount <= 0) {
+            return CompletableFuture.completedFuture(true);
+        }
+
+        String sql = dataBase.mysql() ? """
+                UPDATE couples_features
+                SET value = CAST(CAST(value AS SIGNED) - ? AS CHAR)
+                WHERE couple_id = ?
+                  AND feature = ?
+                  AND CAST(value AS SIGNED) >= ?
+                """ : """
+                UPDATE couples_features
+                SET value = CAST(CAST(value AS INTEGER) - ? AS TEXT)
+                WHERE couple_id = ?
+                  AND feature = ?
+                  AND CAST(value AS INTEGER) >= ?
+                """;
+
+        return dataBase.executeUpdateRowsAsync(sql, amount, coupleId, feature, amount)
+                .thenApply(rowsAffected -> rowsAffected > 0);
+    }
+
+    @Override
     public CompletableFuture<Void> delete(String coupleId, String feature) {
         String sql = """
                 DELETE FROM couples_features
                 WHERE couple_id = ?
                 AND feature = ?
                 """;
-        return CompletableFuture.runAsync(() -> {
-            dataBase.executeUpdate(
-                    sql,
-                    coupleId,
-                    feature
-            );
-        });
+        return dataBase.executeUpdateAsync(
+                sql,
+                coupleId,
+                feature
+        );
     }
 
     @Override
@@ -173,7 +194,6 @@ public class FeaturesImpl implements FeatureRepository {
                 coupleId
         );
     }
-
 
     private void validateNumber(String type, String value) {
         try {

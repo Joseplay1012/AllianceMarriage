@@ -15,7 +15,7 @@ public interface CouplesRepository {
     CompletableFuture<Optional<Couple>> findById(UUID id);
 
     /**
-     * find partnet of player
+     * find partner of player
      */
     CompletableFuture<Optional<UUID>> findPartner(UUID playerUUID);
 
@@ -23,5 +23,13 @@ public interface CouplesRepository {
 
     CompletableFuture<MarryContextResult> divorcePlayer(UUID playerUUID);
 
+    Couple getCoupleFromCache(UUID player);
 
+    Couple getFromCache(UUID coupleId);
+
+    boolean hasInCache(UUID uuid);
+
+    void addToCache(Couple couple);
+
+    void removeCouple(UUID coupleId);
 }

@@ -1,5 +1,8 @@
 debug: false
 
+marriage:
+  hearts-recive-message: true
+
 database:
   mysql:
     enabled: false

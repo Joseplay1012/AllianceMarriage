@@ -42,6 +42,10 @@ public class PluginSettings {
         return getString("database.mysql.password", "admin");
     }
 
+    public boolean isHeartsReviceMessage(){
+        return getBoolean("hearts-recive-message", true);
+    }
+
     private boolean getBoolean(String path, boolean defaultValue) {
         return config != null ? config.getBoolean(path, defaultValue) : defaultValue;
     }

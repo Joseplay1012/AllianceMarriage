@@ -66,16 +66,18 @@ public class MarriageListeners implements Listener {
                                 .getCoolDownManager()
                                 .setCooldown(couple.getId(), type, activityResult.cooldown());
 
-                        List<UUID> players = List.of(
-                                couple.getPartner1(),
-                                couple.getPartner2()
-                        );
+                        if (Core.getInstance().getPluginSettings().isHeartsReviceMessage()) {
+                            List<UUID> players = List.of(
+                                    couple.getPartner1(),
+                                    couple.getPartner2()
+                            );
 
-                        for (UUID uuid : players) {
-                            Player player = Bukkit.getPlayer(uuid);
+                            for (UUID uuid : players) {
+                                Player player = Bukkit.getPlayer(uuid);
 
-                            if (player != null && player.isOnline()) {
-                                messages.send(player, "couple-win-hearts", "%hearts%", String.valueOf(hearts));
+                                if (player != null && player.isOnline()) {
+                                    messages.send(player, "marriage.couple-win-hearts", "%hearts%", String.valueOf(hearts));
+                                }
                             }
                         }
                     });
